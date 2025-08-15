@@ -1,0 +1,501 @@
+/**
+ * <PRE>
+ * 
+ * Copyright Tony Bringarder 1998, 2025 <A href="http://bringardner.com/tony">Tony Bringardner</A>
+ * 
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       <A href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</A>
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ *  </PRE>
+ *   
+ *   
+ *	@author Tony Bringardner   
+ *
+ *
+ * ~version~V000.01.20-V000.01.13-V000.01.08-V000.00.01-V000.00.00-
+ */
+package us.bringardner.io.filesource.viewer;
+
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.EventQueue;
+import java.awt.FlowLayout;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+
+import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.tree.TreePath;
+
+import us.bringardner.core.swing.DateTimeCombo;
+import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
+import us.bringardner.io.filesource.viewer.SearchRequest.Operator;
+
+public class SearchFrame extends JFrame {
+
+	private static final long serialVersionUID = 1L;
+	private JPanel contentPane;
+	private JPanel panel;
+	private JPanel panel_1;
+	private JPanel panel_2;
+	private JTextField nameField;
+	private JCheckBox chckbxCaseSensative;
+	private JComboBox<String> dateComboBox;
+	private JComboBox<String> sizeComboBox;
+	private JCheckBox chckbxSearchByName;
+	private JCheckBox chckbxSeachBySize;
+	private JCheckBox chckbxSearchByDate;
+	private JButton btnSearchNow;
+	private JButton btnAdvanced;
+	//private FileSource dir;
+	private ActivityLayer activityLayer;
+	private DateTimeCombo date1;
+	private DateTimeCombo date2;
+	private JTable table;
+	private SearchFileTableModel model;
+	private JScrollPane scrollPane;
+	private SizeEditPanel size1EditPane;
+	private SizeEditPanel size2EditPane;
+	private JPanel panel_3;
+	private JCheckBox chckbxSearchByType;
+	private JComboBox<String> typeComboBox;
+	private JPanel panel_4;
+	private JPopupMenu popup;
+	private FileSourceViewer browser;
+	private FileSource dir;
+
+	public SearchFrame(FileSource dir, FileSourceViewer browser) {
+		this();
+		this.dir = dir;
+		this.browser = browser;
+		setTitle("Searching "+dir.getAbsolutePath());
+		panel_1.setVisible(false);
+		panel_2.setVisible(false);
+		nameField.requestFocusInWindow();
+		activityLayer = new ActivityLayer();
+		date1.setdate(new Date());
+		date2.setdate(new Date());
+		table.setDefaultRenderer(Date.class, new FileTableCellRenderer());
+		table.setDefaultRenderer(Long.class, new FileTableCellRenderer());
+		table.setDefaultRenderer(String.class, new FileTableCellRenderer());
+		//getContentPane().add( activityLayer);
+		setGlassPane(activityLayer);
+//		if(!browser.isRemote()) {
+			typeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"File", "Dir"}));
+//		}
+
+	}
+
+	/**
+	 * Launch the application.
+	 */
+	public static void main(String[] args) {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					FileSourceViewer browser = new FileSourceViewer();
+					SearchFrame frame = new SearchFrame(FileProxyFactory.getDefaultFactory().createFileSource("/Volumes/Data"),browser);
+					frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+					frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Create the frame.
+	 */
+	public SearchFrame() {
+		setTitle("Search");
+		setBounds(100, 100, 1086, 527);
+		setLocationRelativeTo(null);
+		setIconImage(Toolkit.getDefaultToolkit().getImage(SearchFrame.class.getResource(FileSourceViewer.ICON_LOCATION+"/folder.png")));
+		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+		contentPane = new JPanel();
+		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+		contentPane.setLayout(new BorderLayout(0, 0));
+		setContentPane(contentPane);
+
+		JPanel detailPanel = new JPanel();
+		contentPane.add(detailPanel, BorderLayout.NORTH);
+		detailPanel.setLayout(new BoxLayout(detailPanel, BoxLayout.Y_AXIS));
+
+		panel = new JPanel();
+		FlowLayout flowLayout = (FlowLayout) panel.getLayout();
+		flowLayout.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(panel);
+
+		chckbxSearchByName = new JCheckBox("Search by name");
+		chckbxSearchByName.setSelected(true);
+		panel.add(chckbxSearchByName);
+
+		nameField = new JTextField();
+		panel.add(nameField);
+		nameField.setColumns(45);
+
+		chckbxCaseSensative = new JCheckBox("Case Sensative");
+		panel.add(chckbxCaseSensative);
+
+		btnSearchNow = new JButton("Search Now");
+		btnSearchNow.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				model.clear();
+				if( !chckbxSearchByName.isSelected() 
+						&& !chckbxSeachBySize.isSelected()
+						&& !chckbxSearchByDate.isSelected()) {
+					return;
+				}
+				//	System.out.println("Search "+dir+" exists = "+dir.exists());
+				if(activityLayer != null ) {
+					if( activityLayer.isRunning()) {
+						activityLayer.stop();						
+					} else {
+						//model.clear();
+						final SearchRequest sr = new SearchRequest();
+						sr.model = model;
+						sr.activity = activityLayer;
+						sr.caseSensative = chckbxCaseSensative.isSelected();
+						if( chckbxSearchByName.isSelected()) {
+							sr.name = nameField.getText().trim();
+							if(sr.name.length() == 0) {
+								sr.name = null;
+							}
+						}
+
+
+
+						if(chckbxSearchByDate.isSelected()) {
+							sr.date1 = date1.getDate().getTime();
+							String val = dateComboBox.getSelectedItem().toString();
+							if("After".equals(val)) {
+								sr.dateOp = Operator.GREATER_THAN;
+							} else if("Before".equals(val)) {
+								sr.dateOp = Operator.LESS_THAN;
+							}  else if("Same Day".equals(val)) {
+								sr.dateOp = Operator.BETWEEN;
+								Calendar cal = Calendar.getInstance();
+								cal.setTimeInMillis(sr.date1);
+								cal.set(Calendar.HOUR_OF_DAY, 0);
+								cal.set(Calendar.MINUTE, 0);
+								cal.set(Calendar.SECOND, 0);
+								cal.set(Calendar.MILLISECOND, 0);
+								sr.date1 = cal.getTimeInMillis();
+								cal.add(Calendar.DAY_OF_MONTH, 1);
+								sr.date2 = cal.getTimeInMillis();
+								
+							} else if("Between".equals(val)) {
+								sr.dateOp = Operator.BETWEEN;
+								sr.date2 = date2.getDate().getTime();
+							}
+						}
+
+						sr.size1 = -1;
+						sr.size2 = -1;
+						if(chckbxSeachBySize.isSelected()) {
+							sr.size1 = size1EditPane.getValue();
+
+							String val = sizeComboBox.getSelectedItem().toString();
+							if(">".equals(val)) {
+								sr.sizeOp = Operator.GREATER_THAN;
+							} else if("<".equals(val)) {
+								sr.sizeOp = Operator.LESS_THAN;
+							}  else if("=".equals(val)) {
+								sr.sizeOp = Operator.EQUAL;
+							} else if("Between".equals(val)) {
+								sr.sizeOp = Operator.BETWEEN;
+								sr.size2 = size2EditPane.getValue();
+							}
+						}
+						if( chckbxSearchByType.isSelected() ) {
+							sr.type = SearchRequest.Type.valueOf(typeComboBox.getSelectedItem().toString().toUpperCase());
+						}
+
+						if( sr.name == null 
+								&& !chckbxSearchByType.isSelected()
+								&& !chckbxSeachBySize.isSelected()
+								&& !chckbxSearchByDate.isSelected()) {
+							return;
+						}
+						btnSearchNow.setText("Cancel");
+						activityLayer.start();
+						sr.postProcessor = new Runnable() {
+
+							@Override
+							public void run() {
+								SwingUtilities.invokeLater(new Runnable() {
+
+									@Override
+									public void run() {
+										btnSearchNow.setText("Search Now");	
+										sr.activity.stop();
+									}
+								});								
+							}							
+						};
+
+						new Thread(new Runnable() {
+							@Override
+							public void run() {
+								try {
+									listFiles(sr);
+								} catch (IOException e) {
+									JOptionPane.showMessageDialog(table, "Error "+e, "", JOptionPane.ERROR_MESSAGE);
+								}
+
+							}
+
+							private void listFiles(SearchRequest sr) throws IOException{
+								search(sr,dir);
+								sr.postProcessor.run();
+							}
+
+						
+						}).start();
+
+					}
+				}
+			}
+		});
+
+		panel.add(btnSearchNow);
+
+		btnAdvanced = new JButton("Advanced");
+		btnAdvanced.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				panel_1.setVisible(!panel_1.isVisible());
+				panel_2.setVisible(!panel_2.isVisible());
+			}
+		});
+		panel.add(btnAdvanced);
+
+		panel_1 = new JPanel();
+		FlowLayout flowLayout_1 = (FlowLayout) panel_1.getLayout();
+		flowLayout_1.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(panel_1);
+
+		chckbxSeachBySize = new JCheckBox("Seach by Size");
+		panel_1.add(chckbxSeachBySize);
+
+		size1EditPane = new SizeEditPanel();
+		panel_1.add(size1EditPane);
+
+		sizeComboBox = new JComboBox<String>();
+		sizeComboBox.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				String val = sizeComboBox.getSelectedItem().toString();
+				if(val.equals("Between")) {
+					size2EditPane.setVisible(true);
+				} else {
+					size2EditPane.setVisible(false);
+				}				
+			}
+		});
+		sizeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"Between", "<", "=", ">"}));
+		panel_1.add(sizeComboBox);
+
+		size2EditPane = new SizeEditPanel();
+		panel_1.add(size2EditPane);
+
+		panel_3 = new JPanel();
+		panel_1.add(panel_3);
+
+		panel_4 = new JPanel();
+		panel_4.setPreferredSize(new Dimension(85, 10));
+		panel_3.add(panel_4);
+
+		chckbxSearchByType = new JCheckBox("Search by Type");
+		panel_3.add(chckbxSearchByType);
+
+		typeComboBox = new JComboBox<String>();
+		typeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"File", "Dir"}));
+		panel_3.add(typeComboBox);
+
+		panel_2 = new JPanel();
+		FlowLayout flowLayout_2 = (FlowLayout) panel_2.getLayout();
+		flowLayout_2.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(panel_2);
+
+		chckbxSearchByDate = new JCheckBox("Search by Date");
+		panel_2.add(chckbxSearchByDate);
+
+		date1 = new DateTimeCombo();
+		date1.setLabel("Start Date");
+		panel_2.add(date1);
+
+		dateComboBox = new JComboBox<String>();
+		dateComboBox.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent arg0) {
+				String val = dateComboBox.getSelectedItem().toString();
+				if(val.equals("Between")) {
+					date2.setVisible(true);
+				} else {
+					date2.setVisible(false);
+				}				
+			}
+		});
+		dateComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"Between", "Before", "Same Day", "After"}));
+		panel_2.add(dateComboBox);
+
+		date2 = new DateTimeCombo();
+		date2.setLabel("End Date");
+		panel_2.add(date2);
+
+		scrollPane = new JScrollPane();
+		contentPane.add(scrollPane, BorderLayout.CENTER);
+
+		table = new JTable();
+		table.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent evt) {
+				if( evt.getButton() == 3) {
+					// pop-up
+					int [] rows = table.getSelectedRows();
+					int touched = table.rowAtPoint(evt.getPoint());
+					boolean all = false;
+					for(int idx=0; idx<rows.length; idx++) {
+						if( rows[idx] == touched) {
+							all = true;
+							break;
+						}
+					}
+					if( !all ) {
+						table.setRowSelectionInterval(touched, touched);
+						Thread.yield();
+					}
+					popup.show(evt.getComponent(),evt.getX(),evt.getY());
+				} else if(evt.getClickCount() == 2) {
+					// open
+					ArrayList<FileSource> list = getSelectedFromTable();
+					openFiles(list);					
+				}				
+			}
+		});
+		table.setAutoCreateRowSorter(true);
+		model = new SearchFileTableModel();
+		table.setModel(model);
+		scrollPane.setViewportView(table);
+
+		JPanel statusPanel = new JPanel();
+		contentPane.add(statusPanel, BorderLayout.SOUTH);
+		popup = new JPopupMenu("Options");
+		JMenuItem item = new JMenuItem("Open");
+		item.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent evt) {
+				openFiles(getSelectedFromTable());
+			}
+		});
+		popup.add(item);
+		item = new JMenuItem("Open Containing Folder");
+		item.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent evt) {
+				ArrayList<FileSource> list = getSelectedFromTable();
+				ArrayList<FileSource> dirs = new ArrayList<FileSource>();
+				try {
+					for (FileSource f : list) {
+						dirs.add(f.getParentFile());						
+
+					}
+					openFiles(dirs);
+				} catch (IOException e) {
+					JOptionPane.showMessageDialog(SearchFrame.this, e.getMessage(), "", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		});
+		popup.add(item);
+
+	}
+
+	protected void openFiles(ArrayList<FileSource> list) {
+		if(browser != null) {
+			for (FileSource f : list) {
+				try {
+					if( f.isDirectory()) {
+						TreePath tp = browser.buildTreePath(f);
+						browser.setSelectionPath(tp);
+						JFrame frame = browser.getFrame();
+						frame.toFront();
+						frame.repaint();
+					} else {
+						browser.open(f);
+					}
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	public ArrayList<FileSource> getSelectedFromTable() {
+		ArrayList<FileSource> files = new ArrayList<FileSource>();
+		for (int row : table.getSelectedRows()) {
+			files.add(model.getFile(table.convertRowIndexToModel(row)));
+		}
+		return files;
+	}
+
+	private void search(SearchRequest sr, FileSource dir) {
+		if( !sr.isCanceled()) {
+			try {
+				FileSource[] list = dir.listFiles();
+				if( list != null && !sr.isCanceled()) {
+
+					for (FileSource f : list) {
+						if(sr.isMatch(f)) {
+							sr.model.add(f);
+						}
+					}
+					for (FileSource f : list) {
+						if(!sr.isCanceled() && f.isDirectory()) {
+							search(sr,f);
+						}
+					}
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				sr.activity.stop();
+			}
+		}
+ 		
+	}
+	
+}
