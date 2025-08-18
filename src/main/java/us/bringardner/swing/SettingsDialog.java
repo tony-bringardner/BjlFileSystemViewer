@@ -13,25 +13,50 @@ import javax.swing.JColorChooser;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JSlider;
 import javax.swing.UIDefaults;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
 import us.bringardner.io.filesource.viewer.FileSourceViewer;
+import javax.swing.SwingConstants;
 
 public class SettingsDialog extends JDialog {
 
 	private static final long serialVersionUID = 1L;
-	private final JPanel contentPanel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+	private final GradientPanel contentPanel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
 	private JPanel buttonPane;
-	private JLabel lblNewLabel;
+
 	private JLabel textLabel;
+	private GradientButton okButton;
+	private GradientButton cancelButton;
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
+		/*
+		UIDefaults defaults = javax.swing.UIManager.getDefaults();
+
+		for(Object key : defaults.keySet()) {
+			String name = key.toString();
+			if( name.startsWith("Color")) {
+					Object val = defaults.get(key);
+					System.out.println(name+" = "+val.getClass()+" = "+val);
+					if (val instanceof IconUIResource) {
+						IconUIResource icon = (IconUIResource) val;
+						System.out.println(""+icon.getIconWidth()+" x "+icon.getIconHeight());
+					}
+
+
+			}
+		}
+		 */
+		//System.exit(0);
+
+		//defaults.put("ColorChooser.background", new ColorUIResource(Color.red));
+		//defaults.put("ColorChooser.foreground", new ColorUIResource(Color.blue));
+
 		try {
 			SettingsDialog dialog = new SettingsDialog();
 			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -45,20 +70,20 @@ public class SettingsDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public SettingsDialog() {
-		setBounds(100, 100, 531, 300);
+		setBounds(100, 100, 669, 387);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPanel.setBackground(FileSourceViewer.GradiantPanelStartColor);
 		contentPanel.setForeground(FileSourceViewer.GradiantPanelEndColor);
 		getContentPane().add(contentPanel, BorderLayout.CENTER);
 		contentPanel.setLayout(new BorderLayout(0, 0));
-		
+
 		JPanel centerPanel = new JPanel();
 		centerPanel.setBackground(FileSourceViewer.TRANSPARENT);
 		contentPanel.add(centerPanel, BorderLayout.CENTER);
 		centerPanel.setLayout(null);
-		
-		textLabel = new JLabel("<html>The quick brown fox jumped over the lazy dog.</html>");
+
+		textLabel = new JLabel("<html>The quick brown fox jumped over the lazy dog.<br><center><font color=\"green\">Edit</font></center></html>");
 		textLabel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
@@ -66,53 +91,77 @@ public class SettingsDialog extends JDialog {
 			}
 		});
 		textLabel.setBorder(new TitledBorder(null, "Font", TitledBorder.LEADING, TitledBorder.TOP, null, null));
-		
-		textLabel.setBounds(122, 14, 283, 94);
+
+		textLabel.setBounds(133, 14, 393, 158);
 		textLabel.setOpaque(true);
-		
+
 		//textLabel.setBackground(FileSourceViewer.TRANSPARENT);
 		centerPanel.add(textLabel);
-		
-		JSlider slider = new JSlider();
-		slider.setBorder(new TitledBorder(null, "Color Theme", TitledBorder.LEADING, TitledBorder.TOP, null, null));
-		slider.setBounds(80, 141, 365, 53);
-		slider.setOpaque(true);
-		//slider.setBackground(FileSourceViewer.TRANSPARENT);
-		centerPanel.add(slider);
-		
-		lblNewLabel = new JLabel("Start Color");
-		lblNewLabel.addMouseListener(new MouseAdapter() {
+
+		JLabel startColorLabel = new JLabel("Color 1");
+		startColorLabel.setBounds(240, 239, 103, 31);
+		centerPanel.add(startColorLabel);
+		startColorLabel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				actionStartColor();
 			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+				startColorLabel.setBorder(new LineBorder(startColorLabel.getBackground(), 1, true));
+				contentPanel.updateUI();
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				startColorLabel.setBorder(new LineBorder(startColorLabel.getForeground(), 1, true));
+				contentPanel.updateUI();
+
+			}
 		});
-		lblNewLabel.setBounds(6, 159, 87, 16);
-		centerPanel.add(lblNewLabel);
-		
-		JLabel lblNewLabel_1 = new JLabel("End Color");
-		lblNewLabel_1.addMouseListener(new MouseAdapter() {
+
+		startColorLabel.setBorder(new LineBorder(startColorLabel.getForeground(), 1, true));
+
+		JLabel endColorLabel = new JLabel("Color 2");
+		endColorLabel.setBounds(355, 237, 111, 35);
+		centerPanel.add(endColorLabel);
+		endColorLabel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				actionEndColor();
 			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				endColorLabel.setBorder(new LineBorder(endColorLabel.getBackground(), 1, true));
+				contentPanel.updateUI();
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				endColorLabel.setBorder(new LineBorder(endColorLabel.getForeground(), 1, true));
+				contentPanel.updateUI();
+
+			}
 		});
-		lblNewLabel_1.setBounds(454, 159, 61, 16);
-		centerPanel.add(lblNewLabel_1);
+		endColorLabel.setBorder(new LineBorder(endColorLabel.getForeground(), 1, true));
+
+		JLabel lblNewLabel = new JLabel("Color Theme");
+		lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		lblNewLabel.setBounds(240, 211, 178, 16);
+		centerPanel.add(lblNewLabel);
 
 		buttonPane = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
 		buttonPane.setLayout(new FlowLayout(FlowLayout.CENTER));
 		getContentPane().add(buttonPane, BorderLayout.SOUTH);
-		
-		
-		GradientButton okButton = new GradientButton("OK");
+
+
+		okButton = new GradientButton("OK");
 		okButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionOk();
 			}
 		});
 		buttonPane.add(okButton);
-		GradientButton cancelButton = new GradientButton("Cancel");
+		cancelButton = new GradientButton("Cancel");
 		cancelButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				actionCancel();
@@ -121,48 +170,55 @@ public class SettingsDialog extends JDialog {
 		buttonPane.add(cancelButton);
 		buttonPane.setBackground(FileSourceViewer.GradiantPanelStartColor);
 		buttonPane.setForeground(FileSourceViewer.GradiantPanelEndColor);
-		
+
 	}
 
 	protected void actionCancel() {
 		dispose();
-		
+
 	}
 
 	protected void actionOk() {
 		dispose();
-		
+
 	}
 
 	protected void actionFont() {
 		FontDialog dialog = new FontDialog();
+		dialog.setLocationRelativeTo(this);
 		Font font = dialog.showDialog(textLabel.getFont());
-		textLabel.setFont(font);
-		
-		UIDefaults defaults = javax.swing.UIManager.getDefaults();
-		for(Object key : defaults.keySet()) {
-			Object value = defaults.get(key);
-			if (value instanceof Font) {
-				defaults.put(key, font);				
-			}
-		}		
+		if( font != null ) {
+			textLabel.setFont(font);
+
+			UIDefaults defaults = javax.swing.UIManager.getDefaults();
+			for(Object key : defaults.keySet()) {
+				Object value = defaults.get(key);
+				if (value instanceof Font) {
+					defaults.put(key, font);				
+				}
+			}		
+		}
 	}
 
 	protected void actionEndColor() {
-		Color c = JColorChooser.showDialog(this, "End Color", contentPanel.getForeground(), true);
+		Color c = JColorChooser.showDialog(this, "Color 2", contentPanel.getForeground(), true);
 		if( c != null ) {
 			contentPanel.setForeground(c);	
 			buttonPane.setForeground(c);
+			okButton.setForeground(c);
+			cancelButton.setForeground(c);
 		};		
-		
+
 	}
 
 	protected void actionStartColor() {
-		Color c = JColorChooser.showDialog(this, "Start Color", contentPanel.getBackground(), true);
+		Color c = JColorChooser.showDialog(this, "Color 1", contentPanel.getBackground(), true);
 		if( c != null ) {
 			contentPanel.setBackground(c);
 			buttonPane.setBackground(c);
+			okButton.setBackground(c);
+			cancelButton.setBackground(c);
 		}
-				
+
 	}
 }
