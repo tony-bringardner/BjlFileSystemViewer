@@ -138,6 +138,7 @@ import javax.swing.tree.TreeSelectionModel;
 import us.bringardner.core.SecureBaseObject;
 import us.bringardner.io.filesource.FactoryPropertiesDialog;
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.FileSourceChooserDialog;
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.FileSourceTransferable;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
@@ -159,7 +160,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 
 	public static final String PREF_SHOW_HIDDEN = "ShowHidden";
 	public static final String PREF_SHOW_EXTENTION = "ShowExtention";
-
+	public static final String PREF_START_LOCATION = "StartLocation";
 	public static final String PREF_COLOR = "Color";
 
 	public static final String ICON_LOCATION = "/us/bringardner/io/filesource/viewer/icons";
@@ -300,7 +301,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 			return showExtention?displayName:shortName;
 		}
 
-		
+
 		/**
 		 * The default implementation will not load children.  This is only used to find a node in the tree 
 		 * @return the children after loaded if needed
@@ -311,9 +312,19 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 					try {
 						FileSource[] kids = dir.listFiles();
 						if( kids != null) {
+							Arrays.sort(kids, new Comparator<FileSource>() {
+								@Override
+								public int compare(FileSource o1, FileSource o2) {
+									return o1.getName().compareToIgnoreCase(o2.getName());
+								}
+							});
+
 							for(FileSource kid : kids) {
 								if( kid.isDirectory()) {
-									add(new FileSourceTreeNode(kid));
+									boolean hide = kid.isHidden() || kid.getName().startsWith(".");
+									if( showHidden || !hide) {
+										add(new FileSourceTreeNode(kid));
+									}
 								}
 							}
 						}
@@ -325,7 +336,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 			}
 			return children;
 		}
-		
+
 		@Override
 		public boolean isLeaf() {
 			//  Only directories are in the tree and none are leafs 
@@ -352,7 +363,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 		public FileSource getDir() {
 			return dir;
 		}
-		
+
 		public void reset() {
 			try {
 				List<String> names = new ArrayList<>();
@@ -386,7 +397,12 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 				}
 
 				FileSource kids [] = dir.listFiles();
-
+				Arrays.sort(kids, new Comparator<FileSource>() {
+					@Override
+					public int compare(FileSource o1, FileSource o2) {
+						return o1.getName().compareToIgnoreCase(o2.getName());
+					}
+				});
 				for(int idx=0; idx < kids.length; idx++) {
 					if( !names.contains(kids[idx].getAbsolutePath())) {
 						if( kids[idx].isDirectory()) {
@@ -437,13 +453,23 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 				if( !root1.canRead()) {
 					root1 =  factory.getCurrentDirectory();
 				}
-				for(FileSource file : root1.listFiles()) {
-					if( file.isDirectory()) {
-						boolean hide = file.isHidden() || file.getName().startsWith(".");
-						if( showHidden || !hide) {
-							children.add(new FileSourceTreeNode(file));
+				FileSource [] kids =  root1.listFiles();
+				if( kids !=null ) {
+					Arrays.sort(kids, new Comparator<FileSource>() {
+						@Override
+						public int compare(FileSource o1, FileSource o2) {
+							return o1.getName().compareToIgnoreCase(o2.getName());
 						}
+					});
+					for(FileSource file : kids) {
+						if( file.isDirectory()) {
+							boolean hide = file.isHidden() || file.getName().startsWith(".");
 
+							if( showHidden || !hide) {
+								children.add(new FileSourceTreeNode(file));
+							}
+
+						}
 					}
 				}
 			} catch (Exception e) {
@@ -470,21 +496,33 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 			setStatus(root1);
 			pane.setVisible(false);
 
-			SwingUtilities.invokeLater(()->{
+			String prefId = PREF_START_LOCATION+"_"+factory.getTypeId();			
+			String tmp = pref.get(prefId, null);
+			if( tmp == null ) {
+				if (factory instanceof FileProxyFactory) {
+					tmp = System.getProperty("user.home");					
+				}
+			}
+
+			if( tmp != null ) {
 				try {
-					String home = System.getProperty("user.home");
-					FileSource homeDir = factory.createFileSource(home);
-					if( homeDir.exists()) {
-						factory.setCurrentDirectory(homeDir);
-						TreePath path2 = buildTreePath(homeDir);			
-						tree.setSelectionPath(path2);					
+					FileSource tmpDir = factory.createFileSource(tmp);
+					if( tmpDir.exists()) {
+						final FileSource homeDir = tmpDir;
+						SwingUtilities.invokeLater(()->{
+							try {
+								factory.setCurrentDirectory(homeDir);
+								TreePath path2 = buildTreePath(homeDir);			
+								tree.setSelectionPath(path2);					
+							} catch (IOException e) {
+								showError("Error setting home directory", e);
+							}
+						});
 					}
-
-				} catch (IOException e) {
-					showError("Error setting home directory", e);
-				}	
-			});
-
+				}catch (Exception e) {
+					// TODO: handle exception
+				}
+			}
 
 		}
 	}
@@ -519,7 +557,9 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 				for (FileSource f : kids) {
 					if(f.isDirectory()) {
 						boolean hide = f.isHidden() || f.getName().startsWith(".");
-						if( !hide ) {
+						boolean show = showHidden;
+
+						if( show || !hide ) {
 							FileSourceTreeNode k = new FileSourceTreeNode(f);
 							children.add(k);	
 						}
@@ -2333,6 +2373,48 @@ Tree.selectionForeground
 		});
 
 
+		getMntmStartLocation().addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {				
+				actionSetStartLocation();
+			}
+		});
+
+
+	}
+
+	protected void actionSetStartLocation() {
+		try {
+			FileSource dir = currentNode.getDir();
+			String prefId = PREF_START_LOCATION+"_"+factory.getTypeId();
+			String tmp = pref.get(prefId, null);
+			if( tmp != null ) {
+				FileSource tmpDir = factory.createFileSource(tmp);
+				if( tmpDir.exists() && dir.isDirectory()) {
+					dir = tmpDir;
+				}
+			}
+
+
+			FileSourceChooserDialog fc = new FileSourceChooserDialog();
+
+			fc.setSelectedFile(dir);
+			fc.setFileSelectionMode(FileSourceChooserDialog.DIRECTORIES_ONLY);
+			JFrame frame = getFrame();
+			fc.setLocationRelativeTo(frame);
+			if( fc.showDialog(frame, "Select") == FileSourceChooserDialog.APPROVE_OPTION) {
+
+				dir = fc.getSelectedFile();
+				if( dir != null ) {
+					if( dir.exists()) {
+						pref.put(prefId, dir.getAbsolutePath());					
+					}
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			showError("", e);
+		}
 	}
 
 	private void actionOpenTerminal(FileSource cwd) {

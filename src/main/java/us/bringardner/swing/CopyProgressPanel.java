@@ -35,12 +35,12 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 	private synchronized static int nextId() {
 		return ++idTracker;
 	}
-	
+
 	private int bufferSize=1024;
-	
+
 	private  class CopyThread extends BaseThread {
 
-		
+
 		private Transaction transaction;
 
 		public CopyThread(Transaction tx) {
@@ -51,10 +51,10 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 			running = started = true;
 			InputStream in = null;
 			OutputStream out = null;
-			
+
 			byte [] buffer = new byte[bufferSize];
 			try {
-				
+
 				FileSource target = transaction.dest;
 				if( transaction.dest.isDirectory()) {
 					target = transaction.dest.getChild(transaction.source.getName());
@@ -64,9 +64,24 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 				long bytesCopied = 0;
 				copyStarted(transaction.source.length());
 				while(!stopping && running ) {
+					if(isCanceled() || transaction.canceled) {
+						stop();
+						return;
+					}
+					while(isPaused()) {
+						Thread.sleep(10);
 						if(isCanceled() || transaction.canceled) {
 							stop();
 							return;
+						}
+					}
+					int got = in.read(buffer);
+					if( got < 0 ) {
+						stop();	
+					} else if( got > 0) {
+						if(isCanceled()) {
+							stop();
+							continue;
 						}
 						while(isPaused()) {
 							Thread.sleep(10);
@@ -75,37 +90,22 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 								return;
 							}
 						}
-					int got = in.read(buffer);
-					if( got < 0 ) {
-						stop();	
-					} else if( got > 0) {
-							if(isCanceled()) {
-								stop();
-								continue;
-							}
-							while(isPaused()) {
-								Thread.sleep(10);
-								if(isCanceled() || transaction.canceled) {
-									stop();
-									return;
-								}
-							}
-						
-						
+
+
 						out.write(buffer, 0, got);
 						bytesCopied+=got;
 						updateProgress(bytesCopied);
-						
-							if(isCanceled()) {
+
+						if(isCanceled()) {
+							stop();
+						}
+						while(isPaused()) {
+							Thread.sleep(10);
+							if(isCanceled() || transaction.canceled) {
 								stop();
+								return;
 							}
-							while(isPaused()) {
-								Thread.sleep(10);
-								if(isCanceled() || transaction.canceled) {
-									stop();
-									return;
-								}
-							}										
+						}										
 					}
 				}
 
@@ -142,10 +142,10 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		boolean canceled;
 		Exception error;
 		long bytesCopied;
-		
+
 
 	}
-	
+
 	private List<FileSource> nodesToAdd = new ArrayList<>();
 	private static String [] colNames = {"Destination","StartTime","EndTime","Status"};
 	public class CopyFileTableModel extends AbstractTableModel {
@@ -182,7 +182,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 					return tx.error.getLocalizedMessage();
 				} 
 				return tx.expected==0?"":""+((int)((tx.bytesCopied/tx.expected)*100.0))+"%";
-				
+
 			default:
 				break;
 			}
@@ -190,16 +190,16 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		}
 
 	}
-	
+
 	class MonitorThread extends BaseThread {
 		CopyThread copyThread;
-		
+
 
 		@Override
 		public void run() {
 			started = running = true;
 			long last = System.currentTimeMillis();
-			
+
 			while(!stopping) {
 				try {
 					if(copyThread == null || !copyThread.isRunning()) {
@@ -222,11 +222,11 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 									pauseCheckBox.setSelected(false);
 								}
 							});
-							
+
 						}
-						
+
 						if( waitingTransaction.size()>0) {
-							
+
 							Transaction tx = waitingTransaction.remove(0);
 							if( tx !=null ) {
 								last = System.currentTimeMillis();
@@ -237,18 +237,18 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 									cancelCurrentButton.setToolTipText("Cancel "+tx.dest.getName());
 									hideOrShowCancelButton(true);
 								});
-								
+
 								copyThread = new CopyThread(currentTransaction);
 								copyThread.start();
 								long start = System.currentTimeMillis();
-								
+
 								while (!copyThread.hasStarted()) {
 									Thread.sleep(5);
 									if( System.currentTimeMillis()-start>200) {
 										System.out.println("Slow start copy thread");
 									}
 								}
-								
+
 							}
 						} else {							
 							SwingUtilities.invokeLater(()->{
@@ -257,8 +257,8 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 									pauseCheckBox.setSelected(false);
 								}
 							});
-							
-						
+
+
 							//  no TX to process. maybe stop???
 							long time = System.currentTimeMillis()-last;
 							if( time > maxIdelTime) {
@@ -329,44 +329,44 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 			}
 		});
 		expandCollapseButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/UpArrow20x20.png")));
-		
+
 		JPanel panel = new JPanel();
 		controlPanel.add(panel, BorderLayout.CENTER);
-				panel.setLayout(new BorderLayout(0, 0));
-		
-				progressBar = new JProgressBar();
-				panel.add(progressBar, BorderLayout.SOUTH);
-				progressBar.setStringPainted(true);
-				
-				progressBarFiles = new JProgressBar();
-				progressBarFiles.setStringPainted(true);
-				panel.add(progressBarFiles, BorderLayout.NORTH);
-				
-				panel_1 = new JPanel();
-				controlPanel.add(panel_1, BorderLayout.EAST);
-				
-						cancelButton = new JButton("");
-						panel_1.add(cancelButton);
-						cancelButton.setToolTipText("Cancel all");
-						cancelButton.setBorderPainted(false);
-						cancelButton.addActionListener(new ActionListener() {
-							public void actionPerformed(ActionEvent e) {
-								actionCancel();
-							}
-						});
-						cancelButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/Cancel30x30.png")));
-						
-						hideButton = new JButton("");
-						hideButton.addActionListener(new ActionListener() {
-							public void actionPerformed(ActionEvent e) {
-								actionHide();
-							}
-						});
-						hideButton.setVisible(false);
-						hideButton.setBorderPainted(false);
-						hideButton.setToolTipText("Close History");
-						hideButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/eye_closed30x30.png")));
-						panel_1.add(hideButton);
+		panel.setLayout(new BorderLayout(0, 0));
+
+		progressBar = new JProgressBar();
+		panel.add(progressBar, BorderLayout.SOUTH);
+		progressBar.setStringPainted(true);
+
+		progressBarFiles = new JProgressBar();
+		progressBarFiles.setStringPainted(true);
+		panel.add(progressBarFiles, BorderLayout.NORTH);
+
+		panel_1 = new JPanel();
+		controlPanel.add(panel_1, BorderLayout.EAST);
+
+		cancelButton = new JButton("");
+		panel_1.add(cancelButton);
+		cancelButton.setToolTipText("Cancel all");
+		cancelButton.setBorderPainted(false);
+		cancelButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionCancel();
+			}
+		});
+		cancelButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/Cancel30x30.png")));
+
+		hideButton = new JButton("");
+		hideButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				actionHide();
+			}
+		});
+		hideButton.setVisible(false);
+		hideButton.setBorderPainted(false);
+		hideButton.setToolTipText("Close History");
+		hideButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/eye_closed30x30.png")));
+		panel_1.add(hideButton);
 
 		JPanel topPanel = new JPanel();
 		add(topPanel, BorderLayout.NORTH);
@@ -393,10 +393,10 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 			}
 		});
 		pausePanel.add(pauseCheckBox);
-		
+
 		cancelOnePanel = new JPanel();
 		topPanel.add(cancelOnePanel, BorderLayout.EAST);
-		
+
 		cancelCurrentButton = new JButton("");
 		cancelCurrentButton.setEnabled(false);
 		cancelCurrentButton.addActionListener(new ActionListener() {
@@ -408,7 +408,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		cancelCurrentButton.setToolTipText("Cancel current copy");
 		cancelCurrentButton.setIcon(new ImageIcon(CopyProgressPanel.class.getResource("/us/bringardner/io/filesource/viewer/icons/Cancel30x30.png")));
 		cancelOnePanel.add(cancelCurrentButton);
-		
+
 		clearButton = new JButton("");
 		clearButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -433,8 +433,8 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		scrollPane.setOpaque(false);
 		scrollPane.getViewport().setOpaque(false);
 		table.setBackground(FileSourceViewer.TRANSPARENT);
-        table.setOpaque(false);
-        table.setBackground(new Color(255, 255, 255, 0));
+		table.setOpaque(false);
+		table.setBackground(new Color(255, 255, 255, 0));
 
 	}
 
@@ -443,7 +443,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		cancelButton.setVisible(showCancel);
 		hideButton.setVisible(!showCancel);
 		clearButton.setVisible(!showCancel);
-		
+
 	}
 
 	protected void actionClear() {
@@ -507,10 +507,10 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		}
 
 	}
-	
+
 	public boolean close() {
 		monitorThread.stop();
-		
+
 		return true;	
 	}
 
@@ -524,7 +524,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 				}
 				((CopyFileTableModel)table.getModel()).fireTableDataChanged();
 			}
-			
+
 		} else {
 			SwingUtilities.invokeLater(()->copyComplete());
 		}
@@ -586,7 +586,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 
 
 	private void addCopy(FileSource source, FileSource dst,MessageDialog dialog) throws IOException {
-		
+
 		if( source.isFile()) {
 
 			Transaction tx = new Transaction();
@@ -623,16 +623,19 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 					nodesToAdd.add(dstDir);
 				}
 			}
-			
-			for(FileSource kid : source.listFiles()) {
-				addCopy(kid,dstDir,dialog);
+
+			FileSource kids[] = source.listFiles();
+			if( kids != null ) {
+				for(FileSource kid : kids) {
+					addCopy(kid,dstDir,dialog);
+				}
 			}
 		} else {
 			throw new IOException(source+" is not a valid file source");
 		}		
 	}
 
-	
+
 	public void addCopy(List<FileSource> list, FileSource dst) {
 		if( SwingUtilities.isEventDispatchThread() ) {
 			// don't process in dispatch thread
@@ -641,7 +644,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 			addCopy1(list, dst);
 		}
 	}
-	
+
 	/**
 	 * This should never be in he dispatch thread
 	 * @param list
@@ -656,7 +659,7 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 		if( waitingTransaction.size()==0) {
 			transactions.clear();
 		}
-		
+
 		for(FileSource file : list) {
 			try {
 				if(file.isDirectory()) {
@@ -671,18 +674,18 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 				}
 			}							
 		}	
-	
+
 		if( nodesToAdd.size()>0) {
 			for(FileSource file: nodesToAdd) {
 				viewer.addTreeNode(file);
 			}
 		}
-		
+
 		paused = p;
 		if( !monitorThread.isRunning()) {
 			monitorThread.start();
 		}		
-		
+
 	}
 
 	public void setRowSize(int h) {

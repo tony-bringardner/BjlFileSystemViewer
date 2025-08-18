@@ -57,6 +57,7 @@ import javax.swing.tree.DefaultTreeModel;
 
 import us.bringardner.swing.CopyProgressPanel;
 import us.bringardner.swing.GradientPanel;
+import javax.swing.JSeparator;
 
 
 
@@ -87,6 +88,9 @@ public class FileSourceViewerBase {
 	private JButton testButton;
 	private CopyProgressPanel copyProgressPanel;
 	private JButton btnNewButton;
+	private JSeparator separator;
+	private JSeparator separator_1;
+	private JMenuItem mntmStartLocation;
 	
 	/**
 	 * Launch the application.
@@ -114,6 +118,9 @@ public class FileSourceViewerBase {
 		return mntmSearch;
 	}
 
+	public JMenuItem getMntmStartLocation() {
+		return mntmStartLocation;
+	}
 
 	public JMenuItem getMntmFont() {
 		return mntmFont;
@@ -363,6 +370,15 @@ public class FileSourceViewerBase {
         
         mntmClose = new JMenuItem("Close");
         fileMenu.add(mntmClose);
+        
+        separator = new JSeparator();
+        fileMenu.add(separator);
+        
+        mntmStartLocation = new JMenuItem("Set Start Directory");
+        fileMenu.add(mntmStartLocation);
+        
+        separator_1 = new JSeparator();
+        fileMenu.add(separator_1);
         
         mntmExit = new JMenuItem("Exit");
         fileMenu.add(mntmExit);
