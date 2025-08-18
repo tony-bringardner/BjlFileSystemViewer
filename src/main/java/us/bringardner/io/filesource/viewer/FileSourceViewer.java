@@ -149,6 +149,7 @@ import us.bringardner.swing.FontDialog;
 import us.bringardner.swing.MessageDialog;
 import us.bringardner.swing.MessageDialog.Response;
 import us.bringardner.swing.ScrollBarUI;
+import us.bringardner.swing.SettingsDialog;
 
 
 
@@ -1136,7 +1137,8 @@ Tree.selectionForeground
 
 						@Override
 						public void handlePreferences(PreferencesEvent e) {
-							System.out.println("Open preferences");
+							SettingsDialog d = new SettingsDialog();
+							d.setVisible(true);
 
 						}
 					});
