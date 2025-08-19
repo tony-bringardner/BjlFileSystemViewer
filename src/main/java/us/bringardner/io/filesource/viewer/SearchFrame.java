@@ -44,7 +44,6 @@ import java.util.Date;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -63,6 +62,8 @@ import us.bringardner.core.swing.DateTimeCombo;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.io.filesource.viewer.SearchRequest.Operator;
+import us.bringardner.swing.GradientButton;
+import us.bringardner.swing.GradientPanel;
 
 public class SearchFrame extends JFrame {
 
@@ -78,8 +79,8 @@ public class SearchFrame extends JFrame {
 	private JCheckBox chckbxSearchByName;
 	private JCheckBox chckbxSeachBySize;
 	private JCheckBox chckbxSearchByDate;
-	private JButton btnSearchNow;
-	private JButton btnAdvanced;
+	private GradientButton btnSearchNow;
+	private GradientButton btnAdvanced;
 	//private FileSource dir;
 	private ActivityLayer activityLayer;
 	private DateTimeCombo startDateCombo;
@@ -89,13 +90,13 @@ public class SearchFrame extends JFrame {
 	private JScrollPane scrollPane;
 	private SizeEditPanel size1EditPane;
 	private SizeEditPanel size2EditPane;
-	private JPanel byTypePanel;
 	private JCheckBox chckbxSearchByType;
 	private JComboBox<String> typeComboBox;
 	private JPopupMenu popup;
 	private FileSourceViewer browser;
 	private FileSource dir;
 	private Component horizontalStrut;
+	private GradientPanel detailPanel;
 
 	public SearchFrame(FileSource dir, FileSourceViewer browser) {
 		this();
@@ -147,19 +148,24 @@ public class SearchFrame extends JFrame {
 		setIconImage(Toolkit.getDefaultToolkit().getImage(SearchFrame.class.getResource(FileSourceViewer.ICON_LOCATION+"/folder.png")));
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-		contentPane = new JPanel();
+		contentPane = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+		contentPane.setBackground(FileSourceViewer.GradiantPanelStartColor);
+		contentPane.setForeground(FileSourceViewer.GradiantPanelEndColor);
+
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		contentPane.setLayout(new BorderLayout(0, 0));
 		setContentPane(contentPane);
 
-		JPanel detailPanel = new JPanel();
+		detailPanel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
 		contentPane.add(detailPanel, BorderLayout.NORTH);
 		detailPanel.setLayout(new BoxLayout(detailPanel, BoxLayout.Y_AXIS));
 
-		byNamePanel = new JPanel();
-		FlowLayout fl_byNamePanel = (FlowLayout) byNamePanel.getLayout();
-		fl_byNamePanel.setAlignment(FlowLayout.LEFT);
+		byNamePanel =    new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+		byNamePanel.setBackground(FileSourceViewer.GradiantPanelStartColor);
+		byNamePanel.setForeground(FileSourceViewer.GradiantPanelEndColor);
+
 		detailPanel.add(byNamePanel);
+		byNamePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
 		chckbxSearchByName = new JCheckBox("Search by name");
 		chckbxSearchByName.setSelected(true);
@@ -172,7 +178,7 @@ public class SearchFrame extends JFrame {
 		chckbxCaseSensative = new JCheckBox("Case Sensative");
 		byNamePanel.add(chckbxCaseSensative);
 
-		btnSearchNow = new JButton("Search Now");
+		btnSearchNow = new GradientButton("Search Now");
 		btnSearchNow.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				model.clear();
@@ -295,7 +301,7 @@ public class SearchFrame extends JFrame {
 
 		byNamePanel.add(btnSearchNow);
 
-		btnAdvanced = new JButton("Advanced");
+		btnAdvanced = new GradientButton("Advanced");
 		btnAdvanced.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				bySizePanel.setVisible(!bySizePanel.isVisible());
@@ -304,10 +310,13 @@ public class SearchFrame extends JFrame {
 		});
 		byNamePanel.add(btnAdvanced);
 
-		bySizePanel = new JPanel();
-		FlowLayout fl_bySizePanel = (FlowLayout) bySizePanel.getLayout();
-		fl_bySizePanel.setAlignment(FlowLayout.LEFT);
+		bySizePanel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+		bySizePanel.setBackground(FileSourceViewer.GradiantPanelStartColor);
+		bySizePanel.setForeground(FileSourceViewer.GradiantPanelEndColor);
+
+		
 		detailPanel.add(bySizePanel);
+		bySizePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
 		chckbxSeachBySize = new JCheckBox("Seach by Size");
 		bySizePanel.add(chckbxSeachBySize);
@@ -331,24 +340,22 @@ public class SearchFrame extends JFrame {
 
 		size2EditPane = new SizeEditPanel();
 		bySizePanel.add(size2EditPane);
-
-		byTypePanel = new JPanel();
-		bySizePanel.add(byTypePanel);
 		
 		horizontalStrut = Box.createHorizontalStrut(60);
-		byTypePanel.add(horizontalStrut);
+		bySizePanel.add(horizontalStrut);
+		
+				chckbxSearchByType = new JCheckBox("Search by Type");
+				bySizePanel.add(chckbxSearchByType);
+		
+				typeComboBox = new JComboBox<String>();
+				bySizePanel.add(typeComboBox);
+				typeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"File", "Dir"}));
 
-		chckbxSearchByType = new JCheckBox("Search by Type");
-		byTypePanel.add(chckbxSearchByType);
-
-		typeComboBox = new JComboBox<String>();
-		typeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"File", "Dir"}));
-		byTypePanel.add(typeComboBox);
-
-		byDatePanel = new JPanel();
-		FlowLayout fl_byDatePanel = (FlowLayout) byDatePanel.getLayout();
-		fl_byDatePanel.setAlignment(FlowLayout.LEFT);
+		byDatePanel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+		byDatePanel.setBackground(FileSourceViewer.GradiantPanelStartColor);
+		byDatePanel.setForeground(FileSourceViewer.GradiantPanelEndColor);
 		detailPanel.add(byDatePanel);
+		byDatePanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
 
 		chckbxSearchByDate = new JCheckBox("Search by Date");
 		byDatePanel.add(chckbxSearchByDate);
