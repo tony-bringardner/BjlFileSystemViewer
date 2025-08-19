@@ -26,7 +26,7 @@
 package us.bringardner.io.filesource.viewer;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.Component;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Toolkit;
@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -67,12 +68,12 @@ public class SearchFrame extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
-	private JPanel panel;
-	private JPanel panel_1;
-	private JPanel panel_2;
+	private JPanel byNamePanel;
+	private JPanel bySizePanel;
+	private JPanel byDatePanel;
 	private JTextField nameField;
 	private JCheckBox chckbxCaseSensative;
-	private JComboBox<String> dateComboBox;
+	private JComboBox<String> dateOperatorComboBox;
 	private JComboBox<String> sizeComboBox;
 	private JCheckBox chckbxSearchByName;
 	private JCheckBox chckbxSeachBySize;
@@ -81,32 +82,32 @@ public class SearchFrame extends JFrame {
 	private JButton btnAdvanced;
 	//private FileSource dir;
 	private ActivityLayer activityLayer;
-	private DateTimeCombo date1;
-	private DateTimeCombo date2;
+	private DateTimeCombo startDateCombo;
+	private DateTimeCombo endDateCombo;
 	private JTable table;
 	private SearchFileTableModel model;
 	private JScrollPane scrollPane;
 	private SizeEditPanel size1EditPane;
 	private SizeEditPanel size2EditPane;
-	private JPanel panel_3;
+	private JPanel byTypePanel;
 	private JCheckBox chckbxSearchByType;
 	private JComboBox<String> typeComboBox;
-	private JPanel panel_4;
 	private JPopupMenu popup;
 	private FileSourceViewer browser;
 	private FileSource dir;
+	private Component horizontalStrut;
 
 	public SearchFrame(FileSource dir, FileSourceViewer browser) {
 		this();
 		this.dir = dir;
 		this.browser = browser;
 		setTitle("Searching "+dir.getAbsolutePath());
-		panel_1.setVisible(false);
-		panel_2.setVisible(false);
+		bySizePanel.setVisible(false);
+		byDatePanel.setVisible(false);
 		nameField.requestFocusInWindow();
 		activityLayer = new ActivityLayer();
-		date1.setdate(new Date());
-		date2.setdate(new Date());
+		startDateCombo.setdate(new Date());
+		endDateCombo.setdate(new Date());
 		table.setDefaultRenderer(Date.class, new FileTableCellRenderer());
 		table.setDefaultRenderer(Long.class, new FileTableCellRenderer());
 		table.setDefaultRenderer(String.class, new FileTableCellRenderer());
@@ -155,21 +156,21 @@ public class SearchFrame extends JFrame {
 		contentPane.add(detailPanel, BorderLayout.NORTH);
 		detailPanel.setLayout(new BoxLayout(detailPanel, BoxLayout.Y_AXIS));
 
-		panel = new JPanel();
-		FlowLayout flowLayout = (FlowLayout) panel.getLayout();
-		flowLayout.setAlignment(FlowLayout.LEFT);
-		detailPanel.add(panel);
+		byNamePanel = new JPanel();
+		FlowLayout fl_byNamePanel = (FlowLayout) byNamePanel.getLayout();
+		fl_byNamePanel.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(byNamePanel);
 
 		chckbxSearchByName = new JCheckBox("Search by name");
 		chckbxSearchByName.setSelected(true);
-		panel.add(chckbxSearchByName);
+		byNamePanel.add(chckbxSearchByName);
 
 		nameField = new JTextField();
-		panel.add(nameField);
+		byNamePanel.add(nameField);
 		nameField.setColumns(45);
 
 		chckbxCaseSensative = new JCheckBox("Case Sensative");
-		panel.add(chckbxCaseSensative);
+		byNamePanel.add(chckbxCaseSensative);
 
 		btnSearchNow = new JButton("Search Now");
 		btnSearchNow.addActionListener(new ActionListener() {
@@ -200,8 +201,8 @@ public class SearchFrame extends JFrame {
 
 
 						if(chckbxSearchByDate.isSelected()) {
-							sr.date1 = date1.getDate().getTime();
-							String val = dateComboBox.getSelectedItem().toString();
+							sr.date1 = startDateCombo.getDate().getTime();
+							String val = dateOperatorComboBox.getSelectedItem().toString();
 							if("After".equals(val)) {
 								sr.dateOp = Operator.GREATER_THAN;
 							} else if("Before".equals(val)) {
@@ -220,7 +221,7 @@ public class SearchFrame extends JFrame {
 								
 							} else if("Between".equals(val)) {
 								sr.dateOp = Operator.BETWEEN;
-								sr.date2 = date2.getDate().getTime();
+								sr.date2 = endDateCombo.getDate().getTime();
 							}
 						}
 
@@ -292,27 +293,27 @@ public class SearchFrame extends JFrame {
 			}
 		});
 
-		panel.add(btnSearchNow);
+		byNamePanel.add(btnSearchNow);
 
 		btnAdvanced = new JButton("Advanced");
 		btnAdvanced.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				panel_1.setVisible(!panel_1.isVisible());
-				panel_2.setVisible(!panel_2.isVisible());
+				bySizePanel.setVisible(!bySizePanel.isVisible());
+				byDatePanel.setVisible(!byDatePanel.isVisible());
 			}
 		});
-		panel.add(btnAdvanced);
+		byNamePanel.add(btnAdvanced);
 
-		panel_1 = new JPanel();
-		FlowLayout flowLayout_1 = (FlowLayout) panel_1.getLayout();
-		flowLayout_1.setAlignment(FlowLayout.LEFT);
-		detailPanel.add(panel_1);
+		bySizePanel = new JPanel();
+		FlowLayout fl_bySizePanel = (FlowLayout) bySizePanel.getLayout();
+		fl_bySizePanel.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(bySizePanel);
 
 		chckbxSeachBySize = new JCheckBox("Seach by Size");
-		panel_1.add(chckbxSeachBySize);
+		bySizePanel.add(chckbxSeachBySize);
 
 		size1EditPane = new SizeEditPanel();
-		panel_1.add(size1EditPane);
+		bySizePanel.add(size1EditPane);
 
 		sizeComboBox = new JComboBox<String>();
 		sizeComboBox.addItemListener(new ItemListener() {
@@ -326,54 +327,53 @@ public class SearchFrame extends JFrame {
 			}
 		});
 		sizeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"Between", "<", "=", ">"}));
-		panel_1.add(sizeComboBox);
+		bySizePanel.add(sizeComboBox);
 
 		size2EditPane = new SizeEditPanel();
-		panel_1.add(size2EditPane);
+		bySizePanel.add(size2EditPane);
 
-		panel_3 = new JPanel();
-		panel_1.add(panel_3);
-
-		panel_4 = new JPanel();
-		panel_4.setPreferredSize(new Dimension(85, 10));
-		panel_3.add(panel_4);
+		byTypePanel = new JPanel();
+		bySizePanel.add(byTypePanel);
+		
+		horizontalStrut = Box.createHorizontalStrut(60);
+		byTypePanel.add(horizontalStrut);
 
 		chckbxSearchByType = new JCheckBox("Search by Type");
-		panel_3.add(chckbxSearchByType);
+		byTypePanel.add(chckbxSearchByType);
 
 		typeComboBox = new JComboBox<String>();
 		typeComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"File", "Dir"}));
-		panel_3.add(typeComboBox);
+		byTypePanel.add(typeComboBox);
 
-		panel_2 = new JPanel();
-		FlowLayout flowLayout_2 = (FlowLayout) panel_2.getLayout();
-		flowLayout_2.setAlignment(FlowLayout.LEFT);
-		detailPanel.add(panel_2);
+		byDatePanel = new JPanel();
+		FlowLayout fl_byDatePanel = (FlowLayout) byDatePanel.getLayout();
+		fl_byDatePanel.setAlignment(FlowLayout.LEFT);
+		detailPanel.add(byDatePanel);
 
 		chckbxSearchByDate = new JCheckBox("Search by Date");
-		panel_2.add(chckbxSearchByDate);
+		byDatePanel.add(chckbxSearchByDate);
 
-		date1 = new DateTimeCombo();
-		date1.setLabel("Start Date");
-		panel_2.add(date1);
+		startDateCombo = new DateTimeCombo();
+		startDateCombo.setLabel("Start Date");
+		byDatePanel.add(startDateCombo);
 
-		dateComboBox = new JComboBox<String>();
-		dateComboBox.addItemListener(new ItemListener() {
+		dateOperatorComboBox = new JComboBox<String>();
+		dateOperatorComboBox.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent arg0) {
-				String val = dateComboBox.getSelectedItem().toString();
+				String val = dateOperatorComboBox.getSelectedItem().toString();
 				if(val.equals("Between")) {
-					date2.setVisible(true);
+					endDateCombo.setVisible(true);
 				} else {
-					date2.setVisible(false);
+					endDateCombo.setVisible(false);
 				}				
 			}
 		});
-		dateComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"Between", "Before", "Same Day", "After"}));
-		panel_2.add(dateComboBox);
+		dateOperatorComboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"Between", "Before", "Same Day", "After"}));
+		byDatePanel.add(dateOperatorComboBox);
 
-		date2 = new DateTimeCombo();
-		date2.setLabel("End Date");
-		panel_2.add(date2);
+		endDateCombo = new DateTimeCombo();
+		endDateCombo.setLabel("End Date");
+		byDatePanel.add(endDateCombo);
 
 		scrollPane = new JScrollPane();
 		contentPane.add(scrollPane, BorderLayout.CENTER);
