@@ -77,11 +77,12 @@ public class SizeEditPanel extends JPanel {
 		textField.setHorizontalAlignment(SwingConstants.RIGHT);
 		textField.setText("");
 		add(textField);
-		textField.setColumns(7);
+		textField.setColumns(10);
 		
 		comboBox = new JComboBox<String>();
 		comboBox.setModel(new DefaultComboBoxModel<String>(new String[] {"B", "KB", "MB", "GB"}));
 		add(comboBox);
+		setBackground(textField.getBackground());
 
 	}
 
