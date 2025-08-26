@@ -25,8 +25,11 @@
  */
 package us.bringardner.io.filesource.viewer;
 
-import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+
+import us.bringardner.io.filesource.viewer.registry.MacRegistry;
+import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
 
 /**
  * The sole purpose of this interface is to identify an executable that can 'Edit'
@@ -36,8 +39,44 @@ import java.util.List;
  *
  */
 public interface IRegistry {
+	
+	public class RegData {
+		public String name;
+		public String path;
+		public String iconPath;
 
-	List<String> getRegisteredEditor(File file);
+		public RegData(String name, String path) {
+			this.name= name;
+			this.path = path;
+		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof RegData) {
+				RegData rd = (RegData) obj;
+				return rd.path.equals(path);
+			}
+			return false;
+		}
+	}
+
+	static IRegistry registry = System.getProperty("os.name").startsWith("Mac")?new MacRegistry():
+		System.getProperty("os.name").startsWith("Win")?new WindowsRegistry():
+			new IRegistry() {
+			List<IRegistry.RegData> empty = new ArrayList<>();
+			
+			@Override
+			public List<RegData> getRegisteredHandler(String path) {
+				return empty;
+			}
+		};
+	
+	public static IRegistry getRegistry() {
+		
+		return registry;
+	}
+
+	List<RegData> getRegisteredHandler(String path);
 
 	
 }

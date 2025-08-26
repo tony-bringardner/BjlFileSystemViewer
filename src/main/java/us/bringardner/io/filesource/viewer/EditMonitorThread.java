@@ -59,11 +59,11 @@ public class EditMonitorThread extends BaseThread {
 				registry = new WindowsRegistry();
 			} else {
 				registry = new IRegistry() {
-					List<String> empty = new ArrayList<String>();
+					List<IRegistry.RegData> empty = new ArrayList<>();
 					
-					public List<String> getRegisteredEditor(File file) {
+					public List<IRegistry.RegData> getRegisteredHandler(String file) {
 						return empty;
-					}
+					}					
 				};
 			}
 		}
@@ -75,7 +75,7 @@ public class EditMonitorThread extends BaseThread {
 	private FileSource remote;
 	private FileSourceViewer browser;
 	
-	public EditMonitorThread(FileSourceViewer browser,FileSource remote, File local,boolean showHidden,boolean showExtention) {
+	public EditMonitorThread(FileSourceViewer browser,FileSource remote, File local) {
 		this.local = local;
 		this.remote = remote;
 		this.browser = browser;
@@ -174,11 +174,11 @@ public class EditMonitorThread extends BaseThread {
 
 	private Process startEditor() {
 		Process ret = null;
-		List<String> list = getRegistry().getRegisteredEditor(local);
+		List<IRegistry.RegData> list = getRegistry().getRegisteredHandler(local.getAbsolutePath());
 		String path = local.getAbsolutePath();
-		for (String exe : list) {
+		for (IRegistry.RegData exe : list) {
 			try {
-				ret = Runtime.getRuntime().exec(exe+" "+path);
+				ret = Runtime.getRuntime().exec(exe.path+" "+path);
 				break;
 			} catch (IOException e) {
 				logDebug("Error executing "+exe, e);

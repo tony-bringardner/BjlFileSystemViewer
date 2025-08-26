@@ -36,6 +36,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -47,6 +48,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -97,6 +99,7 @@ public class SearchFrame extends JFrame {
 	private FileSource dir;
 	private Component horizontalStrut;
 	private GradientPanel detailPanel;
+	private JMenu openMenu;
 
 	public SearchFrame(FileSource dir, FileSourceViewer browser) {
 		this();
@@ -128,7 +131,7 @@ public class SearchFrame extends JFrame {
 			public void run() {
 				try {
 					FileSourceViewer browser = new FileSourceViewer();
-					SearchFrame frame = new SearchFrame(FileProxyFactory.getDefaultFactory().createFileSource("/Volumes/Data"),browser);
+					SearchFrame frame = new SearchFrame(FileProxyFactory.getDefaultFactory().createFileSource("/Volumes/Data/eclipse-git/BjlFileSystemViewer/TestFiles"),browser);
 					frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 					frame.setVisible(true);
 				} catch (Exception e) {
@@ -404,6 +407,29 @@ public class SearchFrame extends JFrame {
 						table.setRowSelectionInterval(touched, touched);
 						Thread.yield();
 					}
+					ArrayList<FileSource> list = getSelectedFromTable();
+					if( list !=null && list.size()>0) {
+						for(FileSource file : list) {
+							File local = browser.getLocalFileDownloadIfNeeded(file);
+							
+							
+						}
+						
+					}
+					//openMenu.removeAll();
+					JMenuItem item = new JMenuItem("open");
+					
+					
+					item.addActionListener(new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent evt) {
+							openFiles(getSelectedFromTable());
+						}
+					});
+
+					openMenu.add(item);
+					
 					popup.show(evt.getComponent(),evt.getX(),evt.getY());
 				} else if(evt.getClickCount() == 2) {
 					// open
@@ -420,16 +446,11 @@ public class SearchFrame extends JFrame {
 		JPanel statusPanel = new JPanel();
 		contentPane.add(statusPanel, BorderLayout.SOUTH);
 		popup = new JPopupMenu("Options");
-		JMenuItem item = new JMenuItem("Open");
-		item.addActionListener(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent evt) {
-				openFiles(getSelectedFromTable());
-			}
-		});
-		popup.add(item);
-		item = new JMenuItem("Open Containing Folder");
+		openMenu = new JMenu("Open With");
+		
+		popup.add(openMenu);
+		
+		JMenuItem item = new JMenuItem("Open Containing Folder");
 		item.addActionListener(new ActionListener() {
 
 			@Override

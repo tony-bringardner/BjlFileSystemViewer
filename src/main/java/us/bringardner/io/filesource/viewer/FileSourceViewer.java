@@ -66,6 +66,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -144,6 +145,7 @@ import us.bringardner.io.filesource.FileSourceTransferable;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
+import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 import us.bringardner.net.framework.client.DynamicTrustManager;
 import us.bringardner.net.framework.client.VisualCertificateValidator;
 import us.bringardner.swing.FontDialog;
@@ -1072,6 +1074,19 @@ Panel.font = javax.swing.plaf.FontUIResource
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
+		/*
+		 * Load the registry
+		 */
+		new Thread(()->{
+			try {
+				IRegistry r = IRegistry.getRegistry();
+				r.getRegisteredHandler("file.txt");
+			} catch (Exception e) {
+			}
+			
+			
+		}).start();
+		
 		UIDefaults defaults = javax.swing.UIManager.getDefaults();
 
 		//FlatMacLightLaf.setup();
@@ -1354,9 +1369,26 @@ Tree.selectionForeground
 				MessageDialog.showErrorDialog(e.getMessage(),"Can't edit "+local+"\n"+e);
 			}
 		} else {
-			File local = getLocalFileDownloadIfNeeded(file);
-			EditMonitorThread emt = new EditMonitorThread(this, file, local,showHidden,showExtention);
-			emt.start();
+			IRegistry reg = EditMonitorThread.getRegistry();
+			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath());
+			if( list == null || list.size()==0) {
+				MessageDialog.showMessageDialog("There are not editors registered for "+file, "");
+			} else {
+				RegData editor = list.get(0); 
+				if( list.size()!= 1) {
+					JPopupMenu pm = new JPopupMenu("Select ");
+					for(RegData rd : list) {
+						JMenuItem mi = new JMenuItem(rd.name);
+						mi.addActionListener((e)->{
+							
+						});
+					}
+				}
+				
+				File local = getLocalFileDownloadIfNeeded(file);
+				EditMonitorThread emt = new EditMonitorThread(this, file, local);
+				emt.start();
+			}
 		}
 
 	}
@@ -1371,12 +1403,46 @@ Tree.selectionForeground
 	}
 
 
-	public void open(FileSource file) {
+	public void open1(FileSource file) {
 		File local = getLocalFileDownloadIfNeeded(file);
 		try {
 			Desktop.getDesktop().open(local);
-		} catch (IOException e) {
-			MessageDialog.showErrorDialog(e.getMessage(),"Can't open "+local+"\n"+e);
+		} catch (IOException e1) {
+			IRegistry reg = EditMonitorThread.getRegistry();
+			List<IRegistry.RegData> list = reg.getRegisteredHandler(local.getAbsolutePath());
+			String path = local.getAbsolutePath();
+			Process proc=null;
+
+			for (IRegistry.RegData exe : list) {
+				try {
+					proc = Runtime.getRuntime().exec(exe+" "+path);
+					break;
+				} catch (IOException e) {
+					System.out.println("Error executing "+exe+e);
+				}
+			}
+			if( proc == null ) {
+				MessageDialog.showErrorDialog("","Can't open "+local+"\n"+e1);
+			} else {
+				try {
+					int exit = proc.waitFor();
+					System.out.println("Exit code = "+exit);
+					BufferedReader r = proc.errorReader();
+					String line = "";
+					while((line=r.readLine()) !=null) {
+						System.out.println("err:"+line);
+					}
+
+					r = proc.inputReader();
+					while((line=r.readLine()) !=null) {
+						System.out.println("out:"+line);
+					}
+				} catch (InterruptedException | IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}
 		}
 
 	}
@@ -2898,8 +2964,6 @@ Tree.selectionForeground
 	}
 
 	/**
-	 * Insert a tree node for dir root = 20,CNC=57,Cylinder02=58,espcam=59 
-	 * /CNC/espcam=60
 	 *   
 	 *   
 	 * @param dir
@@ -2949,6 +3013,16 @@ Tree.selectionForeground
 
 
 		return null;
+	}
+
+	public void open(FileSource file) {
+		File local = getLocalFileDownloadIfNeeded(file);
+		try {
+			Desktop.getDesktop().open(local);
+		} catch (IOException e1) {
+			showError("", e1);
+		}
+
 	}
 
 

@@ -25,7 +25,6 @@
  */
 package us.bringardner.io.filesource.viewer.registry;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -36,19 +35,19 @@ import us.bringardner.io.filesource.viewer.IRegistry;
 
 public class WindowsRegistry implements IRegistry {
 
-	public List<String> getRegisteredEditor(File file) {
-		List<String> list = getRegisteredEditor2(file,"edit");
+	public List<IRegistry.RegData> getRegisteredEditor(String file) {
+		List<IRegistry.RegData> list = getRegisteredEditor2(file,"edit");
 		list.addAll(getRegisteredEditor1(file,"edit"));
 		if(list.size() == 0 ) {
 			list = getRegisteredEditor2(file,"open");
 			list.addAll(getRegisteredEditor1(file,"open"));			
 		}
 		
-		List<String> ret = new ArrayList<String>();
-		for (String tmp : list) {
-			String tmp2 = macro(tmp);
+		List<IRegistry.RegData> ret = new ArrayList<>();
+		for (IRegistry.RegData tmp : list) {
+			String tmp2 = macro(tmp.path);
 			if( !ret.contains(tmp2) ) {
-				ret.add(tmp2);
+				// TODO:  ret.add(tmp2);
 			}
 		}
 		
@@ -77,8 +76,8 @@ public class WindowsRegistry implements IRegistry {
 		
 		return tmp;
 	}
-	private List<String> getRegisteredEditor1(File file, String cmdType) {
-		List<String> ret = new ArrayList<String>();
+	private List<IRegistry.RegData> getRegisteredEditor1(String file, String cmdType) {
+		List<IRegistry.RegData> ret = new ArrayList<>();
 		String ext = getExt(file);
 		if( ext != null ) {
 			String tmp = readRegistry(String.format("HKCR\\%s\\OpenWithProgIDs", ext));
@@ -98,7 +97,7 @@ public class WindowsRegistry implements IRegistry {
 										if( idx > 0 ) {
 											int idx2 = s.indexOf('"',idx+1);
 											if( idx2 > 0 ) {
-												ret.add(s.substring(idx+1,idx2));
+												ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
 											}
 										}
 									}
@@ -125,10 +124,18 @@ public class WindowsRegistry implements IRegistry {
 	}
 
 
-	public static String getExt(File file) {
+	public static String getExt(String file) {
 		String ret = null;
-		String nm = file.getName();
-		int idx= nm.lastIndexOf('.');
+		int idx = file.lastIndexOf("\\");
+		if( idx < 0 ) {
+			idx = file.lastIndexOf("/");
+		}
+		
+		String nm = file;
+		if( idx >=0 ) {
+			nm = file.substring(idx);
+		}
+		idx= nm.lastIndexOf('.');
 		if( idx > 0 ) {
 			ret = nm.substring(idx);
 		}
@@ -191,10 +198,10 @@ public class WindowsRegistry implements IRegistry {
 		String files [] = { "Test.txt", "Test.html","Test.png","Test.jar","Test.x.y.xml","Test",".test"};
 		for (String f : files) {
 
-			List<String> list = reg.getRegisteredEditor(new File(f));
+			List<IRegistry.RegData> list = reg.getRegisteredHandler(f);
 			
 			System.out.println(f+" sz="+list.size());
-			for (String str : list) {
+			for (RegData str : list) {
 				System.out.println("\t str="+str);
 			}
 		}
@@ -220,8 +227,8 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 		 */
 	}
 
-	private  List<String> getRegisteredEditor2(File file, String cmdType) {
-		List<String> ret = new ArrayList<String>();
+	private  List<IRegistry.RegData> getRegisteredEditor2(String file, String cmdType) {
+		List<IRegistry.RegData> ret = new ArrayList<>();
 		String ext = getExt(file);
 		if( ext != null ) {
 			/*
@@ -250,12 +257,12 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 								if( idx > 0 ) {
 									int idx2 = s.indexOf('"',idx+1);
 									if( idx2 > 0 ) {
-										ret.add(s.substring(idx+1,idx2));
+										ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
 									}
 								} else {
 									//(Default)    REG_EXPAND_SZ    %SystemRoot%\system32\NOTEPAD.EXE %1
 									String [] list4 = s.split("[ ]+");
-									ret.add(list4[2]);
+									ret.add(new IRegistry.RegData("",list4[2]));
 								}
 							}
 						}
@@ -281,5 +288,10 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 		}
 
 		return ret;
+	}
+	@Override
+	public List<RegData> getRegisteredHandler(String path) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
