@@ -44,15 +44,18 @@ public class WindowsRegistry implements IRegistry {
 		}
 		
 		List<IRegistry.RegData> ret = new ArrayList<>();
+		/*
 		for (IRegistry.RegData tmp : list) {
 			String tmp2 = macro(tmp.path);
 			if( !ret.contains(tmp2) ) {
 				// TODO:  ret.add(tmp2);
 			}
 		}
+		*/
 		
 		return ret;
 	}
+	@SuppressWarnings("unused")
 	private String macro(String tmp) {
 		int idx = tmp.indexOf('%');
 		while(idx >=0) {

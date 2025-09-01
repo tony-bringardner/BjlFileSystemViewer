@@ -8,8 +8,6 @@ import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.util.List;
 
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -98,7 +96,8 @@ public class RegistryImageFrame extends JFrame {
 
 	private void loadImages(String path) {
 		try {
-			List<BufferedImage> list = MacRegistry.getIcons(path);
+			/*
+			List<Icon> list = MacRegistry.getIcons(path);
 			imageListPanel.removeAll();
 			BufferedImage small = null;
 			for(BufferedImage image : list) {
@@ -111,6 +110,7 @@ public class RegistryImageFrame extends JFrame {
 				imageListPanel.add(new ImagePanel(resize(small, 16, 16)));
 			}
 			contentPane.updateUI();
+			*/
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -52,12 +52,38 @@ std::string getIconPathFromBundleURL(CFURLRef bundleURL) {
 }
 
 JNIEXPORT jstring JNICALL Java_us_bringardner_io_filesource_viewer_registry_MacGetLaunchData_getLaunchData(JNIEnv *env, jobject obj, jstring ext){
+    CFStringRef        cfhandler = NULL;
+    CFArrayRef        cfhandlers = NULL;
+    
     int errors=0;
     long count = 0;
     std::stringstream ret;
     const char *name = (env)->GetStringUTFChars(ext,NULL);
-    CFStringRef        cfhandler = NULL;
-    CFArrayRef        cfhandlers = NULL;
+    
+    LSRolesMask role = kLSRolesAll;
+    std::string arg = (env)->GetStringUTFChars(ext,NULL);
+    unsigned long pos = arg.find(",");
+    //ret << "pos=" << pos << "\n";
+    if (pos != std::string::npos) {
+        std::string left  = arg.substr(0,pos);
+        std::string right = arg.substr(pos+1);
+        //ret << "left=" << left << "\n";
+        //ret << "right=" << right << "\n";
+        name = left.data();
+        if(right == "Editor") {
+            role = kLSRolesEditor;
+        } else if(right == "Viewer") {
+            role = kLSRolesViewer;
+        } else if(right == "Shell") {
+            role = kLSRolesShell;
+        } else if(right == "None") {
+            role = kLSRolesNone;
+        }
+    }
+       
+    
+    
+    
     
     std::string uti1 = UTIWrapper::getUTIFromExtension(name);
 
@@ -69,7 +95,7 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_io_filesource_viewer_registry_MacG
     }
     
     CFStringRef uti = CFStringCreateWithCString(NULL, uti1.data(), kCFStringEncodingMacRoman);
-    cfhandlers = LSCopyAllRoleHandlersForContentType(uti, kLSRolesAll );
+    cfhandlers = LSCopyAllRoleHandlersForContentType(uti, role );
     if( cfhandlers==NULL) {
         ret << "\tNo handlers found ext=" << name << "\n";
         errors++;
@@ -77,7 +103,6 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_io_filesource_viewer_registry_MacG
         count = CFArrayGetCount( cfhandlers );
         for (int i = 0; i < count; i++ ) {
             cfhandler = (CFStringRef) CFArrayGetValueAtIndex(cfhandlers,i);
-            const char* str = CFStringGetCStringPtr(cfhandler, kCFStringEncodingMacRoman);
             CFErrorRef error = nullptr;
 
             // Get array of application URLs for the bundle identifier
@@ -93,7 +118,6 @@ JNIEXPORT jstring JNICALL Java_us_bringardner_io_filesource_viewer_registry_MacG
                     CFRelease(errDesc);
                     CFRelease(error);
                 }
-                
             } else {
                 
                 // Get the first URL in the array

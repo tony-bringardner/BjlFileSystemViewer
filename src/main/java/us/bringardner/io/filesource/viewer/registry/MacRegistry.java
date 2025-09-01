@@ -1,28 +1,3 @@
-/**
- * <PRE>
- * 
- * Copyright Tony Bringarder 1998, 2025 <A href="http://bringardner.com/tony">Tony Bringardner</A>
- * 
- *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at
- *
- *       <A href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</A>
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *  </PRE>
- *   
- *   
- * @author Tony Bringardner   
- *
- *
- * ~version~V000.01.10-V000.00.01-V000.00.00-
- */
 package us.bringardner.io.filesource.viewer.registry;
 
 import java.awt.Graphics2D;
@@ -41,541 +16,54 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 
 import us.bringardner.io.filesource.viewer.IRegistry;
 
 public class MacRegistry implements IRegistry {
-	
-	
-	
-	public final static String COMMAND = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -dump";
-
-	private static transient Map<String, Bundle> bundles ;
-	private static transient Map<String, List<Bundle>> map ;
-	private static Map<String,String> mimeMap = new TreeMap<>();
+	private native String getLaunchData(String ext);
+	static {
+		System.loadLibrary("GetLaunchData");        
+	}
 
 	private class RegDataImpl extends IRegistry.RegData {
 
+		
+		private App app;
 
-		private Bundle bundle;
-
-		public RegDataImpl(Bundle bundle) {
-			super(bundle.name,bundle.path);
-			this.bundle = bundle;
+		public RegDataImpl(App app) {
+			super(app.name, app.path);
+			this.app = app;
 		}
 
 		@Override
-		public List<BufferedImage> getIcons() throws IOException {
-
-			return bundle.getIcons();
-		}
-
-		@Override
-		public BufferedImage getIcon(int width, int height) throws IOException {
-			return bundle.getIcon(width,height);
-		}
-
-
-	}
-
-	static {
-		mimeMap.put("bmp","image/bmp");
-		mimeMap.put("css","text/css");
-		mimeMap.put("csv","text/csv");
-		mimeMap.put("gif","image/gif");
-		mimeMap.put("htm","text/html");
-		mimeMap.put("html","text/html");
-		mimeMap.put("ics","text/calendar");
-		mimeMap.put("jpeg","image/jpeg");
-		mimeMap.put("jpg","image/jpeg");
-		mimeMap.put("js","text/javascript");
-		mimeMap.put("json","text/json");
-		mimeMap.put("mp3","audio/mpeg");
-		mimeMap.put("mpeg","video/mpeg");
-		mimeMap.put("png","image/png");
-		mimeMap.put("php","text/x-httpd-php");
-		mimeMap.put("rtf","text/rtf");
-		mimeMap.put("sh","text/sh");
-		mimeMap.put("svg","image/svg+xml");
-		mimeMap.put("tif","image/tiff");
-		mimeMap.put("tiff","image/tiff");
-		mimeMap.put("txt","text/plain");
-		mimeMap.put("text","text/plain");
-		mimeMap.put("vsd","application/vnd.visio");
-		mimeMap.put("xhtml","application/xhtml+xml");
-		mimeMap.put("xls","application/vnd.ms-excel");
-		mimeMap.put("xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-		mimeMap.put("xml","text/xml");
-
-	}
-	
-	private static Map<String,List<String>> claimedUtis = new TreeMap<>();
-	
-	private static class Claim {
-		String id;
-		String bundle;
-		String rank;
-		List<CommandType> roles = new ArrayList<>();
-		String [] bindings;
-
-		public Claim(String line, BufferedReader in) throws IOException {
-			id = line.substring(15).trim();
-			while( (line=in.readLine()) != null) {
-
-				String l2 = line.trim();
-				if( l2.length()> 6) {
-					if( l2.startsWith("bundle:")) {
-						bundle = l2.substring(7).trim();
-					} else if( l2.startsWith("rank:")) {
-						rank = l2.substring(6).trim();
-					} else if( l2.startsWith("roles:") && l2.length()>7) {
-						String [] tmp = l2.substring(7).trim().split("[,]");
-						for (int i = 0; i < tmp.length; i++) {
-							tmp[i] = tmp[i].trim();
-							if(tmp[i].startsWith("Editor")) {
-								roles.add(CommandType.Editor);
-							} else if(tmp[i].startsWith("Viewer")) {
-								roles.add(CommandType.Viewer);
-							} 
-						}
-
-					} else if( l2.startsWith("bindings:") && l2.length()>10) {
-						bindings = l2.substring(10).trim().split("[,]");
-						for (int i = 0; i < bindings.length; i++) {
-							bindings[i] = bindings[i].trim();
-						}
-					} else if( l2.startsWith("----")) {
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	/*
-type id:                    public.shell-script (0x1363c)
-bundle:                     CoreTypes (0x459c)
-uti:                        public.shell-script
-localizedDescription:       "ar" = "برنامج Shell النصي", "ca" = "script de shell", "cs" = "shell skript", "da" = "shell-instruks", "de" = "Shell-Skript", "el" = "σκριπτ κελύφους", "en" = "shell script", "en_AU" = "shell script", "en_GB" = "shell script", "es" = "script de shell", "es_419" = "script de shell", "es_US" = "script de shell", "fi" = "komentotulkkiskripti", "fr" = "script shell", "fr_CA" = "script de coque logicielle", "he" = "תסריט מעטפת", "hi" = "शेल स्क्रिप्ट", "hr" = "shell skripta", "hu" = "shell szkript", "id" = "skrip shell", "it" = "script shell", "ja" = "シェルスクリプト", "ko" = "셸 스크립트", "LSDefaultLocalizedValue" = "shell script", "ms" = "skrip cangkerang", "nl" = "shellscript", "no" = "shellscript", "pl" = "skrypt powłoki", "pt_BR" = "script de shell", "pt_PT" = "script da shell", "ro" = "script shell", "ru" = "основной скрипт", "sk" = "shell skript", "sl" = "skript lupine", "sv" = "kommandotolkskript", "th" = "เชลล์สคริปต์", "tr" = "kabuk betiği", "uk" = "скрипт командного рядка", "vi" = "tập lệnh shell", "zh_CN" = "shell脚本", "zh_HK" = "shell程式碼", "zh_TW" = "Shell工序指令"
-flags:                      active  public  apple-internal  exported  core  trusted (0000000000000077)
-conforms to:                public.script
-tags:                       .sh
-
-	 */
-
-	private static class FileType {
-		String id;
-		String bundle ;
-		String uti;
-		String [] conformsTo;
-		String [] tags;
-
-		public FileType(String line, BufferedReader in) throws IOException {
-			id = line.substring(line.indexOf(':')+1).trim();
-
-			while( (line=in.readLine()) != null) {
-				String l2 = line.trim();
-
-				if( l2.length()> 6) {
-					int colon = line.indexOf(':')+1;
-					if( l2.startsWith("bundle:")) {
-						bundle = l2.substring(colon).trim();
-					} else if( l2.startsWith("uti:")) {
-						uti = l2.substring(colon).trim();
-					} else if( l2.startsWith("conforms to:")) {
-						String [] tmp = l2.substring(colon).trim().split("[,]");
-						for (int i = 0; i < tmp.length; i++) {
-							tmp[i] = tmp[i].trim();							 
-						}						
-						conformsTo = tmp;					
-					} else if( l2.startsWith("tags:") && l2.length()>7) {
-						String [] tmp = l2.substring(colon).trim().split("[,]");
-						for (int i = 0; i < tmp.length; i++) {
-							tmp[i] = tmp[i].trim();							 
-						}
-						tags = tmp;
-
-					} else if( l2.startsWith("----")) {
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	private static class Bundle {
-		@SuppressWarnings("unused")
-		String id;
-		String path;
-		String executable;
-		String name;
-		List<Claim> claims = new ArrayList<>();
-		List<FileType> fileTypes = new ArrayList<>();
-		private transient String iconLocation;
-		private List<BufferedImage> icons; 
-
-		public Bundle(String line, BufferedReader in) throws IOException {
-			id = line.substring(15).trim();
-			while( (line = in.readLine()) != null) {
-				String l2 = line.trim();
-				if( l2.length() > 6) {
-					if( l2.startsWith("path:")) {
-						path = l2.substring(6).trim();
-						//(0xe7e4)
-						int idx = path.lastIndexOf('(');
-						if( idx > 0 ) {
-							path = path.substring(0,idx).trim();
-						}
-					} else if( l2.startsWith("name:")) {
-						name = l2.substring(6).trim();
-					} else if( l2.startsWith("executable:") && l2.length()> 11 ) {
-						executable = l2.substring(11).trim();
-					} else if( l2.startsWith("icons:")) {
-						iconLocation = l2.substring(6).trim();
-						if(!iconLocation.startsWith("/")) {
-							iconLocation = path+"/"+iconLocation;							
-						}
-					} else if( l2.startsWith("claimed UTIs:")) {
-						String[] tmp = l2.substring(13).trim().split("[,]");
-						for (int idx = 0; idx < tmp.length; idx++) {
-							
-							String uti = tmp[idx];
-							if( uti.startsWith("public")) {
-								List<String> list = claimedUtis.get(uti);
-								if(list==null) {
-									list = new ArrayList<>();
-									claimedUtis.put(uti, list);
-								}
-								list.add(id);
-								//System.out.println(uti);
-							}
-						}
-						
-					} else if( l2.startsWith("----")) {
-						break;
-					}
-				}
-			}
-		}
-
-		public static BufferedImage resize(BufferedImage img, int newW, int newH) { 
-			Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
-			BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
-
-			Graphics2D g2d = dimg.createGraphics();
-			g2d.drawImage(tmp, 0, 0, null);
-			g2d.dispose();
-
-			return dimg;
-		}  
-
-		public BufferedImage getIcon(int width, int height) throws IOException {
-
-			List<BufferedImage> list = getIcons();
-			if( list == null || list.size()==0) {
-				return null;
-			}
-			BufferedImage close=null;
-			for(BufferedImage image : list) {
-				if( image.getWidth()==width && image.getHeight()==height) {
-					return image;
-				}
-
-				if( close == null ) {
-					close = image;
-				} else {
-					if(close.getHeight()-height<image.getHeight()-height) {
-						close = image;
-					}
-				}
-			}
-			BufferedImage ret = resize(close, width, height);
-			list.add(ret);
+		public List<Icon> getIcons() throws IOException {
+			List<Icon> ret = new ArrayList<>();
+			ret.addAll(app.getIcons());			
 			return ret;
 		}
 
-		public List<BufferedImage> getIcons() throws IOException {
-			if( icons == null ) {
-				synchronized (this) {
-					if( icons == null ) {
-
-						if( iconLocation == null ) {
-							icons = new ArrayList<>();
-						} else {
-							if( !iconLocation.startsWith("/")) {
-
-							}
-							icons = MacRegistry.getIcons(iconLocation);
-						}
-					}
-				}
-			}
-			return icons;
-		}
-
-	}
-
-	public synchronized static void   init() throws IOException {
-		bundles = new TreeMap<>();
-		map = new TreeMap<>();
-		Process proc = Runtime.getRuntime().exec(COMMAND);
-		BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-		Bundle bundle = null;
-		Claim claim = null;
-		/*
-bundle  id:            25552
-        path:          /Applications/QuickTime Player.app
-        name:          QuickTime Player
-        executable:    Contents/MacOS/QuickTime Player
-
-   claim   id:            16696
-                bindableKey:   56975
-                generation:    8696
-                name:          QuickTime Player Composition
-                rank:          Default
-                roles:         Editor
-                flags:         apple-internal  relative-icon-path
-                icon:          Contents/Resources/Composition.icns
-                bindings:      com.apple.quicktimeplayerx-composition
-
-		 */
-		try {
-			String line = in.readLine();
-			while(!line.startsWith("----")) {
-				line = in.readLine();
-			}
-
-			System.out.println("Start parsing");
-			while( line != null ) {
-				if( line.startsWith("----")) {
-					bundle = null;
-				} else if( line.startsWith("bundle id:")) {
-					bundle = new Bundle(line, in);
-					bundles.put(bundle.id, bundle);
-				} else if( bundle != null && bundle.name !=null ) {
-					String l2 = line.trim();
-					if( l2.startsWith("claim id:")) {
-						claim = new Claim(l2,in);
-						Bundle b2 = bundles.get(claim.bundle);
-						if( b2 == null ) {
-							System.out.println("Unknow claim bundle="+claim.bundle);
-						}
-						if( !b2.id.equals(bundle.id)) {
-							System.out.println("invalid claim bundle="+b2.id+" , "+bundle.id);
-						}
-
-						// add the bundle if needed
-						if( bundle.executable != null && claim != null ) {
-							if( claim.bindings != null && claim.bindings.length>0) {
-								bundle.claims.add(claim);
-								boolean isDefault = claim.rank == null ? false: claim.rank.equals("Default");
-
-								for(String mime : claim.bindings) {
-									mime= mime.trim();
-									if( mime.startsWith(".")) {
-										mime = mime.substring(1);
-									}
-									if( mime.startsWith("public.")) {
-										mime = mime.substring(7);
-									}
-									//public.plain-text
-									if( mime.equals("plain-text")) {
-										mime = "text/plain";
-									}
-									if( mime.equals("txt") || mime.equals("text")) {
-										mime = "text/plain";
-									}
-									mime = mime.trim();
-									List<Bundle> list = map.get(mime);
-									if( list == null ) {
-										list = new ArrayList<Bundle>();
-										map.put(mime, list);
-									}
-									if( isDefault ) {
-										// default goes at the start of the list
-										list.add(0, bundle);
-									} else {
-										// other goes at the end
-										list.add( bundle);
-									}
-								}
-							}
-
-						}
-						claim = null;
-					} else if( l2.startsWith("type id:")) {
-						FileType type = new FileType(l2, in);
-						if(type.tags != null) {
-							Bundle b2 = bundles.get(type.bundle);
-							if( b2 == null ) {
-								System.out.println("Unknow type bundle="+type.bundle);
-							}
-							if( !b2.id.equals(bundle.id)) {
-								System.out.println("invalid type bundle="+b2.id+" , "+bundle.id);
-							}
-							bundle.fileTypes.add(type);
-							if(type.conformsTo != null ) {
-								Map<String,Bundle> bb = bundles;
-								for(String tmp : type.conformsTo) {
-									Bundle target = bundle;
-									if( tmp != null ) {
-										if( tmp.startsWith("public.")) {
-											String ext = tmp.substring(7);
-											//System.out.println("ext="+ext);
-											List<Bundle> list2 = getListByExtenstion(ext);
-											//System.out.println("ext="+ext+" list="+list2);
-										}							
-									}
-								}
-							}
-							for(String mime : type.tags) {
-								List<Bundle> list = map.get(mime);
-								if( list == null ) {
-									list = new ArrayList<Bundle>();
-									map.put(mime, list);
-								}
-								list.add(bundle);
-							}
-						}
-					}
-				}
-
-				line = in.readLine();
-			}
-		} catch(java.io.EOFException e) {
-			// ignore
-		} finally {
-			try {
-				in.close();
-			} catch(Throwable e) {}
-		}
-
-	}
-
-	public static void main(String [] args) throws IOException {
-
-
-		MacRegistry mr = new MacRegistry();
-		mr.init();
-		System.out.println("uti cnt="+claimedUtis.size());
-		for(String uti : claimedUtis.keySet()) {
-			List<String> list = claimedUtis.get(uti);
-			System.out.println(uti+" = "+list.size());
+		@Override
+		public Icon getIcon(int width, int height) throws IOException {
+			return app.getIcon(width, height);
 		}
 		
-		System.exit(0);
-		String file = "file.sh";
-
-		List<RegData> list = mr.getRegisteredHandler(file,CommandType.Editor);
-
-		
-		if( list == null ) {
-			System.out.println("No list for "+file);
-		} else {
-			System.out.println("list sz="+list.size()+" for "+file);
-			for (RegData path : list) {
-				System.out.println(path.name+" - "+path.path);
-			}
-		}
-
-
-
 	}
+	private static MacRegistry singleton = new MacRegistry();
+	private static Map<String,UtiInstance> map = new TreeMap<>();
 
+	public static ImageIcon resize(ImageIcon icon, int newW, int newH) {
 
+		Image tmp = icon.getImage().getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+		BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
 
+		Graphics2D g2d = dimg.createGraphics();
+		g2d.drawImage(tmp, 0, 0, null);
+		g2d.dispose();
 
-	private static String getMimForExt(String ext) {
-		if( ext.startsWith(".")) {
-			ext = ext.substring(1);
-		}
-		String ret = mimeMap.get(ext);
-
-		return ret;
-	}
-
-	private static List<Bundle> getListByExtenstion(String ext) {
-		List<Bundle> list = map.get(ext);
-		if( list == null ) {
-			ext = "."+ext;
-			list = map.get(ext);
-			if( list == null ) {
-				ext = "public"+ext;
-				list = map.get(ext);
-			}
-		} 
-		return list;
-	}
-
-
-	public List<RegData> getRegisteredHandler(String path,CommandType type) {
-		List<RegData> ret = new  ArrayList<>();
-		if( map == null ) {
-			synchronized (MacRegistry.class) {
-				if( map == null ) {
-					try {
-						init();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-		}
-
-		int idx= path.lastIndexOf('.');
-		if( idx >= 0 ) {
-
-			List<Bundle> list =null;
-			String ext = path.substring(idx+1);
-
-			String mime = getMimForExt(ext);
-			if( mime != null ) {
-				list = map.get(mime);
-
-				if( list != null) {
-					addIfNeeded(ret,list,type);					
-				}
-			}
-
-			list = getListByExtenstion(ext);
-			if( list != null) {
-				addIfNeeded(ret,list,type);				
-			}
-
-			if( ret.size()>1) {
-				List<RegData> ret2 = new ArrayList<>();
-				List<String> already = new ArrayList<>();
-
-				for (RegData data : ret) {					
-					if(!already.contains(data.name)) {
-						already.add(data.name);
-						ret2.add(data);
-					}
-				}
-				ret = ret2;
-			}
-
-
-
-		}
-
-		return ret;
-	}
-
-	private void addIfNeeded(List<RegData> ret, List<Bundle> list, CommandType type) {
-		if( list.size()>0) {
-			for (Bundle bundle : list) {
-				for(Claim claim : bundle.claims) {
-					if(type == CommandType.Any || claim.roles.contains(type)) {
-						RegData data = new RegDataImpl(bundle);
-						if( !ret.contains(data)) {
-							ret.add(data);
-						}		
-					}
-				}			      
-			}
-		}
-	}
+		return new ImageIcon(dimg);
+	}  
 
 	/**
 	 * https://en.wikipedia.org/wiki/Apple_Icon_Image_format
@@ -583,7 +71,7 @@ bundle  id:            25552
 	 * @return
 	 * @throws IOException
 	 */
-	public static List<BufferedImage> getIcons(String path) throws IOException {
+	public static List<BufferedImage> importIcons(String path) throws IOException {
 		List<BufferedImage> ret = new ArrayList<>();
 		File file = new File(path);
 		try(DataInputStream in = new DataInputStream( new FileInputStream(path))) {
@@ -611,6 +99,172 @@ bundle  id:            25552
 			}
 		}
 
+		return ret;
+	}
+
+	private static Map<String,List<ImageIcon>> iconMap = new TreeMap<>();
+
+	public static class App {
+		String name;
+		String path;
+		String iconPath;
+
+
+		public App(String[] parts) {
+			name = parts[0];
+			path = parts[1];
+			iconPath = parts[2];
+		}
+
+		public List<ImageIcon> getIcons() throws IOException {
+			List<ImageIcon> icons = iconMap.get(name);
+			if( icons == null ) {
+				synchronized (iconMap) {
+					icons = iconMap.get(name);
+					if( icons == null ) {
+						List<ImageIcon> tmp = new ArrayList<>();
+						if( iconPath !=null && !iconPath.isEmpty()) {
+							List<BufferedImage> imgs = importIcons(iconPath);
+							if( imgs !=null ) {
+								for(BufferedImage img : imgs) {
+									tmp.add(new ImageIcon(img));
+								}
+							}
+							icons = tmp;
+							iconMap.put(name, icons);
+						}						
+					}
+				}
+			}
+
+			return icons;
+		}
+
+		public Icon getIcon(int width, int height) throws IOException {
+
+			List<ImageIcon> list = getIcons();
+			if( list == null || list.size()==0) {
+				return null;
+			}
+			ImageIcon close=null;
+			for(ImageIcon image : list) {
+				if( image.getIconWidth()==width && image.getIconHeight()==height) {
+					return image;
+				}
+
+				if( close == null ) {
+					close = image;
+				} else {
+					if(close.getIconHeight()-height<image.getIconHeight()-height) {
+						close = image;
+					}
+				}
+			}
+
+			ImageIcon ret = resize(close, width, height);
+			list.add(ret);
+			return ret;
+		}
+
+
+		@Override
+		public String toString() {
+			return name+","+path+","+iconPath;
+		}
+	}
+
+	public static class UtiInstance {
+		String ext;
+		String uti;
+		List<App> apps;
+
+		public UtiInstance(String ext2, String uti2, List<App> apps2) {
+			ext = ext2;
+			uti = uti2;
+			apps = apps2;
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder ret = new StringBuilder(ext+"="+uti+"\n");
+			for(App app : apps) {
+				ret.append(app.toString());
+				ret.append('\n');
+			}
+
+			return ret.toString();
+		}
+	}
+
+	public static UtiInstance getInstance(String extention,IRegistry.CommandType type) {
+
+		String id = extention.trim() +","+type;
+
+		UtiInstance ret = map.get(id);
+		if( ret == null ) {
+			String response = singleton.getLaunchData(id);
+			if( response != null ) {
+				response = response.trim();
+				if( response.startsWith("UTI for") 
+						&& 
+						response.endsWith("errors=0")) {
+					String [] lines = response.split("\n");
+					String uti = lines[0].substring(lines[0].indexOf('='));
+					List<App> apps = new ArrayList<>();
+					for (int idx = 1; idx < lines.length-1; idx++) {
+						String [] parts = lines[idx].split("[,]");
+						if( parts.length == 3) {
+							apps.add(new App(parts));
+						}							
+					}
+					ret = new UtiInstance(id,uti,apps);
+					map.put(id, ret);
+				}
+			}
+		}
+
+		return ret;
+	}
+
+
+
+	public static void main(String[] args) throws IOException {
+		//System.out.println(new MacGetLaunchData().getLaunchData("bash,Editor"));
+
+		IRegistry.CommandType type = CommandType.Any;
+
+		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+		String ext = in.readLine();
+
+		while( ext != null ) {
+			if( ext.equalsIgnoreCase("v")) {
+				type = CommandType.Viewer;
+				System.out.println("type = "+type);
+			} else if( ext.equalsIgnoreCase("e")) {
+				type = CommandType.Editor;
+				System.out.println("type = "+type);
+			} else if( ext.equalsIgnoreCase("a")) {
+				type = CommandType.Any;
+				System.out.println("type = "+type);
+			} else {
+				UtiInstance uti = getInstance(ext,type);
+				System.out.println(uti);				
+			}
+			ext = in.readLine();
+		}
+
+	}
+
+	@Override
+	public List<RegData> getRegisteredHandler(String path, CommandType type) {
+		List<RegData> ret = new ArrayList<>();
+		UtiInstance uti = getInstance(path, type);
+		if( uti != null ) {
+			for(App app : uti.apps) {
+				ret.add(new RegDataImpl(app));
+			}
+		}
+		
 		return ret;
 	}
 

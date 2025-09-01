@@ -25,10 +25,11 @@
  */
 package us.bringardner.io.filesource.viewer;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.Icon;
 
 import us.bringardner.io.filesource.viewer.registry.MacRegistry;
 import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
@@ -46,8 +47,8 @@ public interface IRegistry {
 	public abstract class RegData {
 		public String name;
 		public String path;
-		public abstract List<BufferedImage> getIcons() throws IOException;
-		public abstract BufferedImage getIcon(int width, int height) throws IOException;
+		public abstract List<Icon> getIcons() throws IOException;
+		public abstract Icon getIcon(int width, int height) throws IOException;
 		
 		public RegData(String name, String path) {
 			this.name= name;

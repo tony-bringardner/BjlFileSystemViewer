@@ -29,12 +29,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.List;
 
 import javax.swing.Box;
-import javax.swing.DefaultListSelectionModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JDialog;
@@ -78,7 +76,7 @@ public class OptionSelectDialog extends JDialog {
 	}
 
 	private final JPanel contentPanel = new GradientPanel(3);
-	private ImageIcon icon = MessageIcon;	
+	private Icon icon = MessageIcon;	
 	Color startColor = new Color(242, 206, 113);
 	Color endColor = new Color(150, 123, 40);
 	
@@ -110,7 +108,7 @@ public class OptionSelectDialog extends JDialog {
 	public void setMessage(String message) {
 		this.message = message;
 	}
-	public ImageIcon getIcon() {
+	public Icon getIcon() {
 		return icon;
 	}
 	public void setIcon(ImageIcon icon) {
@@ -186,10 +184,10 @@ public class OptionSelectDialog extends JDialog {
 				System.out.println("Enter getValue row="+row+" col="+column);
 				if( column==0) {
 					try {
-						BufferedImage img = list.get(row)
+						Icon img = list.get(row)
 								.getIcon(16, 16);
 						if( img != null ) {
-						icon = new ImageIcon( img);
+						icon = img;
 						System.out.println("Exit getValue row="+row+" col="+column+" icon="+icon);
 						return icon;
 						} else {
