@@ -70,7 +70,7 @@ public class OptionSelectDialog extends JDialog {
 		IRegistry reg = IRegistry.getRegistry();
 		List<RegData> llist = reg.getRegisteredHandler(".txt", CommandType.Any);
 		String res = showDialog(llist);
-		System.out.println("res="+res);
+		//System.out.println("res="+res);
 		System.exit(0);
 		
 	}
@@ -159,7 +159,7 @@ public class OptionSelectDialog extends JDialog {
 
 			@Override
 			public int getColumnCount() {
-				System.out.println("get col cnt");
+				//System.out.println("get col cnt");
 				return 2;
 			}
 			
@@ -171,7 +171,7 @@ public class OptionSelectDialog extends JDialog {
 			@Override
 			public int getRowCount() {
 				int ret =  list == null ? 0: list.size();
-				System.out.println("get row cnt="+ret);
+				//System.out.println("get row cnt="+ret);
 				return ret;
 			}
 			
@@ -181,25 +181,25 @@ public class OptionSelectDialog extends JDialog {
 			}
 			@Override
 			public Object getValueAt(int row, int column) {
-				System.out.println("Enter getValue row="+row+" col="+column);
+				//System.out.println("Enter getValue row="+row+" col="+column);
 				if( column==0) {
 					try {
 						Icon img = list.get(row)
 								.getIcon(16, 16);
 						if( img != null ) {
 						icon = img;
-						System.out.println("Exit getValue row="+row+" col="+column+" icon="+icon);
+						//System.out.println("Exit getValue row="+row+" col="+column+" icon="+icon);
 						return icon;
 						} else {
 							return null;
 						}
 					} catch (IOException e) {
-						System.out.println(e);
+						//System.out.println(e);
 						return null;
 					}
 				}
 				String ret = list.get(row).name;
-				System.out.println("Exit getValue row="+row+" col="+column+" name="+ret);
+				//System.out.println("Exit getValue row="+row+" col="+column+" name="+ret);
 				return ret;				
 			}
 		});

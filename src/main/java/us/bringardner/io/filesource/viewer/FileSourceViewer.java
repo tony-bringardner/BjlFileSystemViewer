@@ -158,6 +158,7 @@ import us.bringardner.net.framework.client.VisualCertificateValidator;
 import us.bringardner.swing.FontDialog;
 import us.bringardner.swing.MessageDialog;
 import us.bringardner.swing.MessageDialog.Response;
+import us.bringardner.swing.OptionSelectDialog;
 import us.bringardner.swing.ScrollBarUI;
 import us.bringardner.swing.SettingsDialog;
 
@@ -902,11 +903,13 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 	private JMenuItem itemBackup;
 	private JMenuItem itemCopy;
 	private JMenuItem itemOpen;
+	private JMenuItem itemOpenWith;
 	private JMenuItem itemRename;
 	private JMenuItem itemRefresh;
 	private JMenuItem itemOpenTerminal;
 	private JMenuItem itemNewFolder;
 	private JMenuItem itemEdit;
+	private JMenuItem itemEditWith;
 	private JMenuItem itemPrint;
 
 	List<JMenuItem> allMenus =  new ArrayList<>();
@@ -1450,6 +1453,7 @@ Tree.selectionForeground
 		}
 
 	}
+	
 	public void print(FileSource file) {
 		File local = getLocalFileDownloadIfNeeded(file);
 		try {
@@ -1622,6 +1626,31 @@ Tree.selectionForeground
 					}
 				});
 				popup.add(itemOpen);
+				
+				
+				itemOpenWith = new JMenuItem("Open With...");
+				itemOpenWith.addActionListener(new ActionListener() {
+
+
+					public void actionPerformed(ActionEvent evt) {
+						ActionContext sel = getSelectedFromTable();
+						if( sel != null ) {
+							try {
+								for (FileSource f : sel.files) {
+									if(f.isDirectory()) {
+										setSelectionPath(buildTreePath(f));
+									} else {
+										openWith(f);
+									}
+								}
+							} catch (Exception e) {
+								showError("Error opening file",e);
+							}
+						}
+					}
+				});
+				popup.add(itemOpenWith);
+
 			}
 
 			if(destop.isSupported(Action.EDIT)) {
@@ -1646,8 +1675,8 @@ Tree.selectionForeground
 					}
 				});
 				popup.add(itemEdit);
-				JMenuItem itemEdit2 = new JMenuItem("Edit with...");
-				itemEdit2.addActionListener(new ActionListener() {
+				itemEditWith = new JMenuItem("Edit with...");
+				itemEditWith.addActionListener(new ActionListener() {
 
 
 					public void actionPerformed(ActionEvent evt) {
@@ -1656,7 +1685,7 @@ Tree.selectionForeground
 							try {
 								for (FileSource f : sel.files) {
 									if(!f.isDirectory()) {
-										edit(f);
+										editWith(f);
 									}
 								}
 							} catch (Exception e) {
@@ -1666,7 +1695,7 @@ Tree.selectionForeground
 
 					}
 				});
-				popup.add(itemEdit2);
+				popup.add(itemEditWith);
 
 			}
 
@@ -1852,9 +1881,10 @@ Tree.selectionForeground
 			}
 		});
 
-		allMenus =      Arrays.asList(itemOpenTerminal,itemPaste,itemDelete,itemBackup,itemCopy,itemOpen,itemRename,itemRefresh,itemEdit,itemPrint,itemNewFolder);
-		fileReadMenus = Arrays.asList(itemCopy,itemOpen,itemPrint);
-		fileWriteMenus= Arrays.asList(itemDelete,itemRename,itemEdit);
+		allMenus =      Arrays.asList(itemOpenTerminal,itemPaste,itemDelete,itemBackup,itemCopy,itemOpen,itemOpenWith,itemRename,itemRefresh,itemEdit,itemEditWith,itemPrint,itemNewFolder);
+		fileReadMenus = Arrays.asList(itemCopy,itemOpen,itemOpenWith,itemPrint);
+		
+		fileWriteMenus= Arrays.asList(itemDelete,itemRename,itemEdit,itemEditWith);
 
 		dirReadMenus  = Arrays.asList(itemOpenTerminal,itemCopy,itemOpen,itemRefresh);
 		dirWriteMenus = Arrays.asList(itemOpenTerminal,itemDelete,itemRename,itemNewFolder);
@@ -1874,6 +1904,59 @@ Tree.selectionForeground
 	}
 
 
+
+	protected void openWith(FileSource f) {
+		IRegistry reg = IRegistry.getRegistry();
+		List<RegData> list = reg.getRegisteredHandler(f.getName(), CommandType.Any);
+		if( list == null || list.size()==0) {
+			MessageDialog.showMessageDialog("No application availible to open "+f, "");
+			return;
+		}
+		
+		String exe = OptionSelectDialog.showDialog(list);
+		if( exe == null || exe.isEmpty()) {
+			return;
+		}
+		
+		executeExternal(exe,f);
+		
+	}
+
+	private void executeExternal(String exe1, FileSource f) {
+		try {
+			final String exe = exe1;
+			if(System.getProperty("os.name").toLowerCase().startsWith("mac")) {
+				if( exe1.endsWith(".app")) {
+					exe1 = "open -a "+exe1;
+				}
+			}
+			
+			
+			final Process proc = Runtime.getRuntime().exec(exe1+" "+f.getAbsolutePath());
+			if( proc == null ) {
+				MessageDialog.showErrorDialog("Could not execute "+exe, "");
+				return;
+			}
+		
+			new Thread(()->{
+				try {
+					int exitCode = proc.waitFor();
+					if( exitCode != 0) {
+						SwingUtilities.invokeLater(()->{
+							MessageDialog.showErrorDialog(exe+" existed with err code "+exitCode, "");
+						});
+					}
+				} catch (InterruptedException e) {
+				}
+			}).start();
+			
+		} catch (IOException e) {
+			MessageDialog.showErrorDialog(e.getMessage(), "");
+		}
+		
+		
+		
+	}
 
 	private void setupTable() {
 		final JTable table = getTable();
