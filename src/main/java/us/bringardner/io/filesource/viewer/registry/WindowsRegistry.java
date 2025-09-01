@@ -264,7 +264,7 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 									}
 								} else {
 									//(Default)    REG_EXPAND_SZ    %SystemRoot%\system32\NOTEPAD.EXE %1
-									String [] list4 = s.split("[ ]+");
+									//String [] list4 = s.split("[ ]+");
 									//ret.add(new IRegistry.RegData("",list4[2]));
 								}
 							}
