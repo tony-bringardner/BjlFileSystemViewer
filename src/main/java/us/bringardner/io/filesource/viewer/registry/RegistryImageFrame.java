@@ -82,23 +82,23 @@ public class RegistryImageFrame extends JFrame {
 		scrollPane.setViewportView(imageListPanel);
 		imageListPanel.setLayout(new BoxLayout(imageListPanel, BoxLayout.Y_AXIS));
 		loadImages("/Applications/GitHub Desktop.app/Contents/Resources/electron.icns");
+		//loadImages("/Volumes/Data/Applications/ExecutableJars/OpenSCAD.app/Contents/Resources/OpenSCAD.icns");
 	}
-	
+
 	public static BufferedImage resize(BufferedImage img, int newW, int newH) { 
-	    Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
-	    BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
+		Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
+		BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
 
-	    Graphics2D g2d = dimg.createGraphics();
-	    g2d.drawImage(tmp, 0, 0, null);
-	    g2d.dispose();
+		Graphics2D g2d = dimg.createGraphics();
+		g2d.drawImage(tmp, 0, 0, null);
+		g2d.dispose();
 
-	    return dimg;
+		return dimg;
 	}  
-	
+
 	private void loadImages(String path) {
-		MacRegistry mr = new MacRegistry();
 		try {
-			List<BufferedImage> list = mr.getIcon(path);
+			List<BufferedImage> list = MacRegistry.getIcons(path);
 			imageListPanel.removeAll();
 			BufferedImage small = null;
 			for(BufferedImage image : list) {

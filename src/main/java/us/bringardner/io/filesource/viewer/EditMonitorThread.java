@@ -35,6 +35,7 @@ import javax.swing.JOptionPane;
 import us.bringardner.core.BaseThread;
 import us.bringardner.io.filesource.FileSource;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
+import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
 import us.bringardner.io.filesource.viewer.registry.MacRegistry;
 import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
 
@@ -46,42 +47,25 @@ import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
  *
  */
 public class EditMonitorThread extends BaseThread {
-	//We could use the java desktop but then we have no way to monitor the editing process
-	private static IRegistry registry;
-
-
-	public static IRegistry getRegistry() {
-		if( registry == null ) {
-			String os = System.getProperty("os.name");
-			if( os.startsWith("Mac")) {
-				registry = new MacRegistry();
-			} else if( os.startsWith("Win")) {
-				registry = new WindowsRegistry();
-			} else {
-				registry = new IRegistry() {
-					List<IRegistry.RegData> empty = new ArrayList<>();
-					
-					public List<IRegistry.RegData> getRegisteredHandler(String file) {
-						return empty;
-					}					
-				};
-			}
-		}
-
-		return registry;
-	}
 
 	private File local;
 	private FileSource remote;
 	private FileSourceViewer browser;
 	
-	public EditMonitorThread(FileSourceViewer browser,FileSource remote, File local) {
+	public EditMonitorThread(Process process,FileSourceViewer browser,FileSource remote, File local) {
 		this.local = local;
 		this.remote = remote;
 		this.browser = browser;
 	}
 
 	
+	/**
+	 * This thread waits for the edit process to die then uploads any changes to the remote file
+	 * Run assumes:
+	 * 1) An edit processor has been identified and started
+	 * 2) The remote file has been downloaded to 'local'
+	 *  
+	 */
 	public void run() {
 		running = true;
 		long maxWait = 30000;
@@ -174,7 +158,7 @@ public class EditMonitorThread extends BaseThread {
 
 	private Process startEditor() {
 		Process ret = null;
-		List<IRegistry.RegData> list = getRegistry().getRegisteredHandler(local.getAbsolutePath());
+		List<IRegistry.RegData> list = IRegistry.getRegistry().getRegisteredHandler(local.getAbsolutePath(),CommandType.Editor);
 		String path = local.getAbsolutePath();
 		for (IRegistry.RegData exe : list) {
 			try {

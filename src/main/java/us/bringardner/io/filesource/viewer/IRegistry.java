@@ -25,6 +25,8 @@
  */
 package us.bringardner.io.filesource.viewer;
 
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,12 +41,14 @@ import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
  *
  */
 public interface IRegistry {
+	public enum CommandType{Any,Editor,Viewer,None}
 	
-	public class RegData {
+	public abstract class RegData {
 		public String name;
 		public String path;
-		public String iconPath;
-
+		public abstract List<BufferedImage> getIcons() throws IOException;
+		public abstract BufferedImage getIcon(int width, int height) throws IOException;
+		
 		public RegData(String name, String path) {
 			this.name= name;
 			this.path = path;
@@ -66,7 +70,7 @@ public interface IRegistry {
 			List<IRegistry.RegData> empty = new ArrayList<>();
 			
 			@Override
-			public List<RegData> getRegisteredHandler(String path) {
+			public List<RegData> getRegisteredHandler(String path,CommandType type) {
 				return empty;
 			}
 		};
@@ -76,7 +80,7 @@ public interface IRegistry {
 		return registry;
 	}
 
-	List<RegData> getRegisteredHandler(String path);
+	List<RegData> getRegisteredHandler(String path,CommandType type);
 
 	
 }

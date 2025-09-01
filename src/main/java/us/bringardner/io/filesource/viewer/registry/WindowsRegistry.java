@@ -97,7 +97,7 @@ public class WindowsRegistry implements IRegistry {
 										if( idx > 0 ) {
 											int idx2 = s.indexOf('"',idx+1);
 											if( idx2 > 0 ) {
-												ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
+												//ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
 											}
 										}
 									}
@@ -198,7 +198,7 @@ public class WindowsRegistry implements IRegistry {
 		String files [] = { "Test.txt", "Test.html","Test.png","Test.jar","Test.x.y.xml","Test",".test"};
 		for (String f : files) {
 
-			List<IRegistry.RegData> list = reg.getRegisteredHandler(f);
+			List<IRegistry.RegData> list = reg.getRegisteredHandler(f,CommandType.Editor);
 			
 			System.out.println(f+" sz="+list.size());
 			for (RegData str : list) {
@@ -257,12 +257,12 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 								if( idx > 0 ) {
 									int idx2 = s.indexOf('"',idx+1);
 									if( idx2 > 0 ) {
-										ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
+										//ret.add(new IRegistry.RegData("",s.substring(idx+1,idx2)));
 									}
 								} else {
 									//(Default)    REG_EXPAND_SZ    %SystemRoot%\system32\NOTEPAD.EXE %1
 									String [] list4 = s.split("[ ]+");
-									ret.add(new IRegistry.RegData("",list4[2]));
+									//ret.add(new IRegistry.RegData("",list4[2]));
 								}
 							}
 						}
@@ -290,7 +290,7 @@ HKEY_CLASSES_ROOT\txtfile\shell\open\command
 		return ret;
 	}
 	@Override
-	public List<RegData> getRegisteredHandler(String path) {
+	public List<RegData> getRegisteredHandler(String path,CommandType type) {
 		// TODO Auto-generated method stub
 		return null;
 	}

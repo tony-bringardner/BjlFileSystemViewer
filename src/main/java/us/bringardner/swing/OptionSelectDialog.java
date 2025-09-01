@@ -29,9 +29,12 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.List;
 
 import javax.swing.Box;
+import javax.swing.DefaultListSelectionModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JDialog;
@@ -40,10 +43,14 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
+import us.bringardner.io.filesource.viewer.FileSourceViewerBase;
 import us.bringardner.io.filesource.viewer.IRegistry;
+import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
+import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 
 
 
@@ -62,8 +69,11 @@ public class OptionSelectDialog extends JDialog {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		showInputDialog(null, null, null);
-		
+		IRegistry reg = IRegistry.getRegistry();
+		List<RegData> llist = reg.getRegisteredHandler(".txt", CommandType.Any);
+		String res = showDialog(llist);
+		System.out.println("res="+res);
+		System.exit(0);
 		
 	}
 
@@ -141,13 +151,17 @@ public class OptionSelectDialog extends JDialog {
 		getContentPane().add(contentPanel, BorderLayout.CENTER);
 		contentPanel.setLayout(new BorderLayout(0, 0));
 		
-		JScrollPane scrollPane = new JScrollPane();
+		JScrollPane scrollPane = FileSourceViewerBase.createScrollBar();
 		contentPanel.add(scrollPane);
 		
-		table = new JTable();
+		table = FileSourceViewerBase.createTable();
+		
 		table.setModel(new DefaultTableModel() {
+			private static final long serialVersionUID = 1L;
+
 			@Override
 			public int getColumnCount() {
+				System.out.println("get col cnt");
 				return 2;
 			}
 			
@@ -157,16 +171,50 @@ public class OptionSelectDialog extends JDialog {
 			}
 			
 			@Override
+			public int getRowCount() {
+				int ret =  list == null ? 0: list.size();
+				System.out.println("get row cnt="+ret);
+				return ret;
+			}
+			
+			@Override
+			public String getColumnName(int column) {
+				return "";
+			}
+			@Override
 			public Object getValueAt(int row, int column) {
-				return column == 0 ? "":list.get(row).name;				
+				System.out.println("Enter getValue row="+row+" col="+column);
+				if( column==0) {
+					try {
+						BufferedImage img = list.get(row)
+								.getIcon(16, 16);
+						if( img != null ) {
+						icon = new ImageIcon( img);
+						System.out.println("Exit getValue row="+row+" col="+column+" icon="+icon);
+						return icon;
+						} else {
+							return null;
+						}
+					} catch (IOException e) {
+						System.out.println(e);
+						return null;
+					}
+				}
+				String ret = list.get(row).name;
+				System.out.println("Exit getValue row="+row+" col="+column+" name="+ret);
+				return ret;				
 			}
 		});
+		table.getColumnModel().getColumn(0).setMaxWidth(20);
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPane.setViewportView(table);
 		
-		JPanel panel = new JPanel();
-		FlowLayout flowLayout = (FlowLayout) panel.getLayout();
-		flowLayout.setAlignment(FlowLayout.LEFT);
+		GradientPanel panel = new GradientPanel(GradientPanel.DIAGONAL_RIGHT);
+		panel.setBackground(startColor);
+		panel.setForeground(endColor);
+
 		contentPanel.add(panel, BorderLayout.SOUTH);
+		panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 		
 		JLabel lblNewLabel = new JLabel("Other");
 		panel.add(lblNewLabel);
@@ -213,13 +261,27 @@ public class OptionSelectDialog extends JDialog {
 
 
 		
-	public static String showInputDialog(String message, String title,String defaultText) {
+	public static String showDialog(List<RegData> options) {
 		OptionSelectDialog d = new OptionSelectDialog();
+		d.list = options;
+		((DefaultTableModel)d.table.getModel()).fireTableDataChanged();
 		d.setAlwaysOnTop(true);
-		d.setMessage(message);
-		d.setTitle(title);
+		d.setMessage("");
+		d.setTitle("");
 		d.setNoButtonText("Cancel");
 		d.setYesButtonText("Okay");
+		d.setModal(true);
+		d.setVisible(true);
+		if( !d.canceled) {
+			int idx = d.table.getSelectedRow();
+			if( idx >=0 && idx < options.size()) {
+				return options.get(idx).path;
+			}
+			String tmp = d.textField.getText().trim();
+			if( !tmp.isEmpty()) {
+				return tmp;
+			}
+		}
 		
 		return null;
 	}

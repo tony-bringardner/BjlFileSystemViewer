@@ -27,6 +27,7 @@ package us.bringardner.io.filesource.viewer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.FlowLayout;
@@ -108,6 +109,26 @@ public class FileSourceViewerBase {
 		});
 	}
 
+	public static JScrollPane createScrollBar (){
+		JScrollPane scrollPane = new JScrollPane();		
+		
+		
+		scrollPane.setOpaque(false);
+		scrollPane.getViewport().setOpaque(false);
+		scrollPane.setRowHeaderView(new GradientPanel(GradientPanel.DIAGONAL_RIGHT));
+		
+
+		return scrollPane;
+	}
+	
+	public static JTable createTable() {
+		JTable table = new JTable();
+		table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		
+        table.setOpaque(false);
+        table.setBackground(new Color(255, 255, 255, 0));
+        return table;
+	}
 	
 	
 	public CopyProgressPanel getCopyProgressPanel() {

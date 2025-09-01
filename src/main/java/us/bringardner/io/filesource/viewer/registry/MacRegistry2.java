@@ -44,13 +44,9 @@ import javax.imageio.ImageIO;
 
 import us.bringardner.io.filesource.viewer.IRegistry;
 
-public class MacRegistry implements IRegistry {
-	
-	
-	
+public class MacRegistry2 implements IRegistry {
 	public final static String COMMAND = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -dump";
 
-	private static transient Map<String, Bundle> bundles ;
 	private static transient Map<String, List<Bundle>> map ;
 	private static Map<String,String> mimeMap = new TreeMap<>();
 
@@ -80,22 +76,34 @@ public class MacRegistry implements IRegistry {
 
 	static {
 		mimeMap.put("bmp","image/bmp");
+		mimeMap.put("csh","application/x-csh");
 		mimeMap.put("css","text/css");
 		mimeMap.put("csv","text/csv");
+		mimeMap.put("doc","application/msword");
+		mimeMap.put("docx","application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 		mimeMap.put("gif","image/gif");
 		mimeMap.put("htm","text/html");
 		mimeMap.put("html","text/html");
+		mimeMap.put("ico","image/vnd.microsoft.icon");
 		mimeMap.put("ics","text/calendar");
 		mimeMap.put("jpeg","image/jpeg");
 		mimeMap.put("jpg","image/jpeg");
-		mimeMap.put("js","text/javascript");
-		mimeMap.put("json","text/json");
+		mimeMap.put("js","JavaScripttext/javascript");
+		mimeMap.put("json","application/json");
+		mimeMap.put("jsonld","application/ld+json");
+		mimeMap.put("mjs","text/javascript");
 		mimeMap.put("mp3","audio/mpeg");
 		mimeMap.put("mpeg","video/mpeg");
+		mimeMap.put("odp","application/vnd.oasis.opendocument.presentation");
+		mimeMap.put("ods","application/vnd.oasis.opendocument.spreadsheet");
+		mimeMap.put("odt","application/vnd.oasis.opendocument.text");
 		mimeMap.put("png","image/png");
-		mimeMap.put("php","text/x-httpd-php");
-		mimeMap.put("rtf","text/rtf");
-		mimeMap.put("sh","text/sh");
+		mimeMap.put("pdf","application/pdf");
+		mimeMap.put("php","application/x-httpd-php");
+		mimeMap.put("ppt","application/vnd.ms-powerpoint");
+		mimeMap.put("pptx","application/vnd.openxmlformats-officedocument.presentationml.presentation");
+		mimeMap.put("rtf","application/rtf");
+		mimeMap.put("sh","application/x-sh");
 		mimeMap.put("svg","image/svg+xml");
 		mimeMap.put("tif","image/tiff");
 		mimeMap.put("tiff","image/tiff");
@@ -108,12 +116,11 @@ public class MacRegistry implements IRegistry {
 		mimeMap.put("xml","text/xml");
 
 	}
-	
-	private static Map<String,List<String>> claimedUtis = new TreeMap<>();
-	
 	private static class Claim {
+		@SuppressWarnings("unused")
 		String id;
-		String bundle;
+		@SuppressWarnings("unused")
+		String name ;
 		String rank;
 		List<CommandType> roles = new ArrayList<>();
 		String [] bindings;
@@ -124,8 +131,8 @@ public class MacRegistry implements IRegistry {
 
 				String l2 = line.trim();
 				if( l2.length()> 6) {
-					if( l2.startsWith("bundle:")) {
-						bundle = l2.substring(7).trim();
+					if( l2.startsWith("name:")) {
+						name = l2.substring(6).trim();
 					} else if( l2.startsWith("rank:")) {
 						rank = l2.substring(6).trim();
 					} else if( l2.startsWith("roles:") && l2.length()>7) {
@@ -167,29 +174,26 @@ tags:                       .sh
 		String id;
 		String bundle ;
 		String uti;
-		String [] conformsTo;
+		String conformsTo;
 		String [] tags;
 
 		public FileType(String line, BufferedReader in) throws IOException {
-			id = line.substring(line.indexOf(':')+1).trim();
+			id = line.substring(line.indexOf(' ')).trim();
 
 			while( (line=in.readLine()) != null) {
+
 				String l2 = line.trim();
 
 				if( l2.length()> 6) {
-					int colon = line.indexOf(':')+1;
+					int space = line.indexOf(' ');
 					if( l2.startsWith("bundle:")) {
-						bundle = l2.substring(colon).trim();
+						bundle = l2.substring(space).trim();
 					} else if( l2.startsWith("uti:")) {
-						uti = l2.substring(colon).trim();
-					} else if( l2.startsWith("conforms to:")) {
-						String [] tmp = l2.substring(colon).trim().split("[,]");
-						for (int i = 0; i < tmp.length; i++) {
-							tmp[i] = tmp[i].trim();							 
-						}						
-						conformsTo = tmp;					
+						uti = l2.substring(space).trim();
+					} else if( l2.startsWith("uti:")) {
+						conformsTo = l2.substring(space).trim();					
 					} else if( l2.startsWith("tags:") && l2.length()>7) {
-						String [] tmp = l2.substring(colon).trim().split("[,]");
+						String [] tmp = l2.substring(space).trim().split("[,]");
 						for (int i = 0; i < tmp.length; i++) {
 							tmp[i] = tmp[i].trim();							 
 						}
@@ -210,7 +214,6 @@ tags:                       .sh
 		String executable;
 		String name;
 		List<Claim> claims = new ArrayList<>();
-		List<FileType> fileTypes = new ArrayList<>();
 		private transient String iconLocation;
 		private List<BufferedImage> icons; 
 
@@ -235,22 +238,6 @@ tags:                       .sh
 						if(!iconLocation.startsWith("/")) {
 							iconLocation = path+"/"+iconLocation;							
 						}
-					} else if( l2.startsWith("claimed UTIs:")) {
-						String[] tmp = l2.substring(13).trim().split("[,]");
-						for (int idx = 0; idx < tmp.length; idx++) {
-							
-							String uti = tmp[idx];
-							if( uti.startsWith("public")) {
-								List<String> list = claimedUtis.get(uti);
-								if(list==null) {
-									list = new ArrayList<>();
-									claimedUtis.put(uti, list);
-								}
-								list.add(id);
-								//System.out.println(uti);
-							}
-						}
-						
 					} else if( l2.startsWith("----")) {
 						break;
 					}
@@ -305,7 +292,7 @@ tags:                       .sh
 							if( !iconLocation.startsWith("/")) {
 
 							}
-							icons = MacRegistry.getIcons(iconLocation);
+							icons = MacRegistry2.getIcons(iconLocation);
 						}
 					}
 				}
@@ -316,8 +303,7 @@ tags:                       .sh
 	}
 
 	public synchronized static void   init() throws IOException {
-		bundles = new TreeMap<>();
-		map = new TreeMap<>();
+		map = new TreeMap<String,List<Bundle>>();
 		Process proc = Runtime.getRuntime().exec(COMMAND);
 		BufferedReader in = new BufferedReader(new InputStreamReader(proc.getInputStream()));
 		Bundle bundle = null;
@@ -345,25 +331,15 @@ bundle  id:            25552
 				line = in.readLine();
 			}
 
-			System.out.println("Start parsing");
 			while( line != null ) {
 				if( line.startsWith("----")) {
 					bundle = null;
 				} else if( line.startsWith("bundle id:")) {
 					bundle = new Bundle(line, in);
-					bundles.put(bundle.id, bundle);
 				} else if( bundle != null && bundle.name !=null ) {
 					String l2 = line.trim();
 					if( l2.startsWith("claim id:")) {
 						claim = new Claim(l2,in);
-						Bundle b2 = bundles.get(claim.bundle);
-						if( b2 == null ) {
-							System.out.println("Unknow claim bundle="+claim.bundle);
-						}
-						if( !b2.id.equals(bundle.id)) {
-							System.out.println("invalid claim bundle="+b2.id+" , "+bundle.id);
-						}
-
 						// add the bundle if needed
 						if( bundle.executable != null && claim != null ) {
 							if( claim.bindings != null && claim.bindings.length>0) {
@@ -403,40 +379,6 @@ bundle  id:            25552
 
 						}
 						claim = null;
-					} else if( l2.startsWith("type id:")) {
-						FileType type = new FileType(l2, in);
-						if(type.tags != null) {
-							Bundle b2 = bundles.get(type.bundle);
-							if( b2 == null ) {
-								System.out.println("Unknow type bundle="+type.bundle);
-							}
-							if( !b2.id.equals(bundle.id)) {
-								System.out.println("invalid type bundle="+b2.id+" , "+bundle.id);
-							}
-							bundle.fileTypes.add(type);
-							if(type.conformsTo != null ) {
-								Map<String,Bundle> bb = bundles;
-								for(String tmp : type.conformsTo) {
-									Bundle target = bundle;
-									if( tmp != null ) {
-										if( tmp.startsWith("public.")) {
-											String ext = tmp.substring(7);
-											//System.out.println("ext="+ext);
-											List<Bundle> list2 = getListByExtenstion(ext);
-											//System.out.println("ext="+ext+" list="+list2);
-										}							
-									}
-								}
-							}
-							for(String mime : type.tags) {
-								List<Bundle> list = map.get(mime);
-								if( list == null ) {
-									list = new ArrayList<Bundle>();
-									map.put(mime, list);
-								}
-								list.add(bundle);
-							}
-						}
 					}
 				}
 
@@ -455,20 +397,11 @@ bundle  id:            25552
 	public static void main(String [] args) throws IOException {
 
 
-		MacRegistry mr = new MacRegistry();
-		mr.init();
-		System.out.println("uti cnt="+claimedUtis.size());
-		for(String uti : claimedUtis.keySet()) {
-			List<String> list = claimedUtis.get(uti);
-			System.out.println(uti+" = "+list.size());
-		}
-		
-		System.exit(0);
+		MacRegistry2 mr = new MacRegistry2();
 		String file = "file.sh";
 
 		List<RegData> list = mr.getRegisteredHandler(file,CommandType.Editor);
 
-		
 		if( list == null ) {
 			System.out.println("No list for "+file);
 		} else {
@@ -485,7 +418,7 @@ bundle  id:            25552
 
 
 
-	private static String getMimForExt(String ext) {
+	private String getMimForExt(String ext) {
 		if( ext.startsWith(".")) {
 			ext = ext.substring(1);
 		}
@@ -494,7 +427,7 @@ bundle  id:            25552
 		return ret;
 	}
 
-	private static List<Bundle> getListByExtenstion(String ext) {
+	private List<Bundle> getListByExtenstion(String ext) {
 		List<Bundle> list = map.get(ext);
 		if( list == null ) {
 			ext = "."+ext;
@@ -511,7 +444,7 @@ bundle  id:            25552
 	public List<RegData> getRegisteredHandler(String path,CommandType type) {
 		List<RegData> ret = new  ArrayList<>();
 		if( map == null ) {
-			synchronized (MacRegistry.class) {
+			synchronized (MacRegistry2.class) {
 				if( map == null ) {
 					try {
 						init();

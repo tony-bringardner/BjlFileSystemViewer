@@ -45,8 +45,14 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.desktop.AboutEvent;
 import java.awt.desktop.AboutHandler;
+import java.awt.desktop.OpenFilesEvent;
+import java.awt.desktop.OpenFilesHandler;
+import java.awt.desktop.OpenURIEvent;
+import java.awt.desktop.OpenURIHandler;
 import java.awt.desktop.PreferencesEvent;
 import java.awt.desktop.PreferencesHandler;
+import java.awt.desktop.PrintFilesEvent;
+import java.awt.desktop.PrintFilesHandler;
 import java.awt.desktop.QuitEvent;
 import java.awt.desktop.QuitHandler;
 import java.awt.desktop.QuitResponse;
@@ -145,6 +151,7 @@ import us.bringardner.io.filesource.FileSourceTransferable;
 import us.bringardner.io.filesource.fileproxy.FileProxy;
 import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
 import us.bringardner.io.filesource.memory.MemoryFileSourceFactory;
+import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
 import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 import us.bringardner.net.framework.client.DynamicTrustManager;
 import us.bringardner.net.framework.client.VisualCertificateValidator;
@@ -1080,7 +1087,7 @@ Panel.font = javax.swing.plaf.FontUIResource
 		new Thread(()->{
 			try {
 				IRegistry r = IRegistry.getRegistry();
-				r.getRegisteredHandler("file.txt");
+				r.getRegisteredHandler("file.txt",CommandType.Any);
 			} catch (Exception e) {
 			}
 			
@@ -1161,6 +1168,34 @@ Tree.selectionForeground
 		SecureBaseObject.setDefaultTrustManagers(mgr);
 
 		if( java.awt.Desktop.isDesktopSupported()) {
+			try {
+				Desktop.getDesktop().setOpenFileHandler(new OpenFilesHandler() {
+					
+					@Override
+					public void openFiles(OpenFilesEvent e) {
+						System.out.println("In file handler");						
+					}
+				});
+				
+				Desktop.getDesktop().setOpenURIHandler(new OpenURIHandler() {
+					
+					@Override
+					public void openURI(OpenURIEvent e) {
+						System.out.println("In URI handler");
+					}
+				});
+				Desktop.getDesktop().setPrintFileHandler(new PrintFilesHandler() {
+					
+					@Override
+					public void printFiles(PrintFilesEvent e) {
+						// TODO Auto-generated method stub
+						System.out.println("In print handler");
+					}
+				});
+				
+			} catch (Exception e) {
+				// TODO: handle exception
+			}
 			try {
 				final Taskbar taskbar = Taskbar.getTaskbar();
 				final Toolkit defaultToolkit = Toolkit.getDefaultToolkit();
@@ -1364,35 +1399,57 @@ Tree.selectionForeground
 		if (file instanceof FileProxy) {
 			File local = ((FileProxy) file).getTarget();								
 			try {
-				Desktop.getDesktop().open(local);
+				Desktop.getDesktop().edit(local);
 			} catch (IOException e) {
 				MessageDialog.showErrorDialog(e.getMessage(),"Can't edit "+local+"\n"+e);
 			}
 		} else {
-			IRegistry reg = EditMonitorThread.getRegistry();
-			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath());
+			IRegistry reg = IRegistry.getRegistry();
+			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath(),CommandType.Editor);
 			if( list == null || list.size()==0) {
 				MessageDialog.showMessageDialog("There are not editors registered for "+file, "");
 			} else {
+				
 				RegData editor = list.get(0); 
 				if( list.size()!= 1) {
-					JPopupMenu pm = new JPopupMenu("Select ");
-					for(RegData rd : list) {
-						JMenuItem mi = new JMenuItem(rd.name);
-						mi.addActionListener((e)->{
-							
-						});
-					}
+					
 				}
 				
 				File local = getLocalFileDownloadIfNeeded(file);
-				EditMonitorThread emt = new EditMonitorThread(this, file, local);
+				EditMonitorThread emt = null;//new EditMonitorThread(this, file, local);
 				emt.start();
 			}
 		}
 
 	}
 
+	public void editWith(FileSource file) {
+		if (file instanceof FileProxy) {
+			File local = ((FileProxy) file).getTarget();								
+			try {
+				Desktop.getDesktop().edit(local);
+			} catch (IOException e) {
+				MessageDialog.showErrorDialog(e.getMessage(),"Can't edit "+local+"\n"+e);
+			}
+		} else {
+			IRegistry reg = IRegistry.getRegistry();
+			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath(),CommandType.Editor);
+			if( list == null || list.size()==0) {
+				MessageDialog.showMessageDialog("There are not editors registered for "+file, "");
+			} else {
+				
+				RegData editor = list.get(0); 
+				if( list.size()!= 1) {
+					
+				}
+				
+				File local = getLocalFileDownloadIfNeeded(file);
+				EditMonitorThread emt = null;//new EditMonitorThread(this, file, local);
+				emt.start();
+			}
+		}
+
+	}
 	public void print(FileSource file) {
 		File local = getLocalFileDownloadIfNeeded(file);
 		try {
@@ -1408,8 +1465,8 @@ Tree.selectionForeground
 		try {
 			Desktop.getDesktop().open(local);
 		} catch (IOException e1) {
-			IRegistry reg = EditMonitorThread.getRegistry();
-			List<IRegistry.RegData> list = reg.getRegisteredHandler(local.getAbsolutePath());
+			IRegistry reg = IRegistry.getRegistry();
+			List<IRegistry.RegData> list = reg.getRegisteredHandler(local.getAbsolutePath(),CommandType.Any);
 			String path = local.getAbsolutePath();
 			Process proc=null;
 
@@ -1589,6 +1646,28 @@ Tree.selectionForeground
 					}
 				});
 				popup.add(itemEdit);
+				JMenuItem itemEdit2 = new JMenuItem("Edit with...");
+				itemEdit2.addActionListener(new ActionListener() {
+
+
+					public void actionPerformed(ActionEvent evt) {
+						ActionContext sel = getSelectedFromTable();
+						if( sel != null ) {
+							try {
+								for (FileSource f : sel.files) {
+									if(!f.isDirectory()) {
+										edit(f);
+									}
+								}
+							} catch (Exception e) {
+								showError("Error editing file",e);
+							}
+						}
+
+					}
+				});
+				popup.add(itemEdit2);
+
 			}
 
 			if(destop.isSupported(Action.PRINT)) {
