@@ -37,6 +37,8 @@ import javax.swing.ImageIcon;
 import javax.swing.table.AbstractTableModel;
 
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
+import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 import us.bringardner.swing.MessageDialog;
 
 public class FileTableModel extends AbstractTableModel {
@@ -184,7 +186,7 @@ public class FileTableModel extends AbstractTableModel {
 									dirIconNoRead
 									:
 										readable?
-												fileIcon
+												getFileIconFor(f)
 												:
 													fileIconNoRead;				
 			default:
@@ -195,6 +197,23 @@ public class FileTableModel extends AbstractTableModel {
 			ret = e.getMessage();
 		}
 
+		return ret;
+	}
+
+
+
+	private Icon getFileIconFor(FileSource f) {
+		Icon ret = fileIcon;
+		List<RegData> list = IRegistry.getRegistry().getRegisteredHandler(f.getAbsolutePath(), CommandType.Any);
+		if( list != null && list.size()>0) {
+			try {
+				Icon tmp = list.get(0).getIcon(16, 16);
+				if( tmp != null ) {
+					ret = tmp;
+				}
+			} catch (IOException e) {
+			}
+		}
 		return ret;
 	}
 

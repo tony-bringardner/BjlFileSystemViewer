@@ -263,6 +263,7 @@ public class OptionSelectDialog extends JDialog {
 		OptionSelectDialog d = new OptionSelectDialog();
 		d.list = options;
 		((DefaultTableModel)d.table.getModel()).fireTableDataChanged();
+		d.table.setRowSelectionInterval(0, 0);
 		d.setAlwaysOnTop(true);
 		d.setMessage("");
 		d.setTitle("");

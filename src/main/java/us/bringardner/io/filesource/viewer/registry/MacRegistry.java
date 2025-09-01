@@ -29,7 +29,7 @@ public class MacRegistry implements IRegistry {
 
 	private class RegDataImpl extends IRegistry.RegData {
 
-		
+
 		private App app;
 
 		public RegDataImpl(App app) {
@@ -48,7 +48,7 @@ public class MacRegistry implements IRegistry {
 		public Icon getIcon(int width, int height) throws IOException {
 			return app.getIcon(width, height);
 		}
-		
+
 	}
 	private static MacRegistry singleton = new MacRegistry();
 	private static Map<String,UtiInstance> map = new TreeMap<>();
@@ -197,6 +197,10 @@ public class MacRegistry implements IRegistry {
 	}
 
 	public static UtiInstance getInstance(String extention,IRegistry.CommandType type) {
+		int i = extention.lastIndexOf('.');
+		if( i>=0 ) {
+			extention = extention.substring(i+1);
+		}
 
 		String id = extention.trim() +","+type;
 
@@ -214,8 +218,13 @@ public class MacRegistry implements IRegistry {
 					for (int idx = 1; idx < lines.length-1; idx++) {
 						String [] parts = lines[idx].split("[,]");
 						if( parts.length == 3) {
-							apps.add(new App(parts));
-						}							
+							if( !parts[0].equals("System Information")) {
+								///Applications/Xcode.app/Contents/Applications/Instruments.app
+								if( parts[1].indexOf(".app") == parts[1].lastIndexOf(".app")) {
+									apps.add(new App(parts));
+								}							
+							}
+						}
 					}
 					ret = new UtiInstance(id,uti,apps);
 					map.put(id, ret);
@@ -264,7 +273,7 @@ public class MacRegistry implements IRegistry {
 				ret.add(new RegDataImpl(app));
 			}
 		}
-		
+
 		return ret;
 	}
 
