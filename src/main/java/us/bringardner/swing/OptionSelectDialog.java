@@ -28,6 +28,7 @@ package us.bringardner.swing;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.io.IOException;
 import java.util.List;
@@ -45,10 +46,15 @@ import javax.swing.ListSelectionModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
+import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.FileSourceChooserDialog;
+import us.bringardner.io.filesource.FileSourceFilter;
 import us.bringardner.io.filesource.viewer.FileSourceViewerBase;
 import us.bringardner.io.filesource.viewer.IRegistry;
 import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
 import us.bringardner.io.filesource.viewer.IRegistry.RegData;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 
 
 
@@ -70,7 +76,7 @@ public class OptionSelectDialog extends JDialog {
 		IRegistry reg = IRegistry.getRegistry();
 		List<RegData> llist = reg.getRegisteredHandler(".txt", CommandType.Any);
 		String res = showDialog(llist);
-		//System.out.println("res="+res);
+		System.out.println("res="+res);
 		System.exit(0);
 		
 	}
@@ -139,7 +145,7 @@ public class OptionSelectDialog extends JDialog {
 	 * Create the dialog.
 	 */
 	public OptionSelectDialog() {
-		setBounds(100, 100, 450, 264);
+		setBounds(100, 100, 543, 326);
 
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -222,6 +228,61 @@ public class OptionSelectDialog extends JDialog {
 		textField.setColumns(20);
 		
 		GradientButton browseButton = new GradientButton("OK");
+		browseButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				FileSourceChooserDialog fc = new FileSourceChooserDialog();
+				//fc.setFileSelectionMode(FileSourceChooserDialog.FILES_ONLY);
+				fc.addChoosableFileFilter(new FileSourceFilter() {
+					
+					@Override
+					public String getDescription() {
+						return "Test";
+					}
+					
+					@Override
+					public boolean accept(FileSource f) {
+						boolean ret = false;
+						try {
+							if( f.isDirectory()) {
+								ret = f.getName().endsWith(".app");
+							} else {
+								ret = f.canExecute();
+							}
+						} catch (IOException e) {
+						}
+						return ret;
+					}
+				});
+				fc.setFileFilter(new FileSourceFilter() {
+					
+					@Override
+					public String getDescription() {
+						
+						return "Executable files";
+					}
+					
+					@Override
+					public boolean accept(FileSource f) {
+						boolean ret = false;
+						try {
+							if( f.isDirectory()) {
+								ret = f.getName().endsWith(".app");
+							} else {
+								ret = f.canExecute();
+							}
+						} catch (IOException e) {
+						}
+						return ret;
+					}
+				});
+				if( fc.showOpenDialog(contentPanel)== FileSourceChooserDialog.APPROVE_OPTION) {
+					FileSource f = fc.getSelectedFile();
+					textField.setText(f.getAbsolutePath());
+				}
+			}
+		});
+		browseButton.setPreferredSize(new Dimension(50, 30));
+		browseButton.setToolTipText("Browse");
 		browseButton.setText("...");
 		panel.add(browseButton);
 
