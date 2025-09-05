@@ -25,23 +25,141 @@
  */
 package us.bringardner.io.filesource.viewer;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Properties;
 
 import us.bringardner.core.BaseThread;
 import us.bringardner.io.filesource.FileSource;
+import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.fileproxy.FileProxy;
+import us.bringardner.io.filesource.sftp.SftpFileSourceFactory;
+import us.bringardner.io.filesource.viewer.FileSourceViewer.CopyProgressListner;
 
 public class CopyThread extends BaseThread {
 
+	public static void main(String [] args) throws IOException {
+		String src = "/data/services/home/bringardner.us/Tony/MySql/mysql-5.5.8-win32.zip";
+		String dst = "/Volumes/Data/home/mysql-5.5.8-win32.zip";
+		
+		SftpFileSourceFactory factory = new SftpFileSourceFactory();
+		Properties prop = factory.getConnectProperties();
+		prop.setProperty(SftpFileSourceFactory.PROP_HOST, "test.bringardner.us");
+		prop.setProperty(SftpFileSourceFactory.PROP_USER, "tony");
+		prop.setProperty(SftpFileSourceFactory.PROP_PASSWORD, "0000");
+		if( !factory.connect(prop)) {
+			System.out.println("Can't connect");
+			
+		} else {
+			FileSource fs = factory.createFileSource(src);
+			
+			FileSource fd = FileSourceFactory.getDefaultFactory().createFileSource(dst);
+			
+			CopyProgressListner l = new CopyProgressListner() {
+				private boolean canceled = false;
+				private boolean paused = false;
+				
+				long startTime;
+				long lastTime;
+				long size;
+				long copied;
+				String desc;
+				//String msg = "%d%   55MB   8.4MB/s  mysql-5.5.8-win32.zip";
+				String msg = "%2.2f%% %dMB %2.2fMB/s %s";
+				
+				
+				@Override
+				public void updateProgress(long bytesCopied) {
+					copied = bytesCopied;
+					lastTime = System.currentTimeMillis();
+					
+					double perc = ((double)copied/(double)size)*100.0;
+					
+					
+					long time = lastTime-startTime;
+					double speedMbits = (copied) / (time / 1000.0)/ 1_000_000;
+				        
+					int mb = (int)(copied/(1024*1024));
+					
+					System.out.println(String.format(msg, perc,mb,speedMbits,desc));
+					
+					
+				}
+				
+				@Override
+				public void setDescription(String description) {
+					desc = description;
+					
+				}
+				
+				@Override
+				public boolean isPaused() {
+					return paused;
+				}
+				
+				@Override
+				public boolean isCanceled() {
+					return canceled;
+				}
+				
+				@Override
+				public void error(Exception e) {
+					System.out.println(e);					
+				}
+				
+				@Override
+				public void copyStarted(long bytesExpected) {
+					size = bytesExpected;
+					startTime = System.currentTimeMillis();
+				}
+				
+				@Override
+				public void copyComplete() {
+					System.out.println("Complete");
+					System.exit(0);
+				}
+			};
+			CopyThread ct = new CopyThread(fs, fd, l);
+			ct.setDaemon(true);
+			ct.start();
+			
+			/*
+			byte [] data = new byte[1024*10];
+			try(InputStream in = fs.getInputStream()) {
+				try( OutputStream out = fd.getOutputStream()) {
+					int got = in.read(data);
+					while( got >= 0 ) {
+						if( got > 0 ) {
+							out.write(data, 0, got);
+						}
+						got = in.read(data);
+					}
+				}
+			}
+			*/
+		}
+		
+	}
+	
 	private FileSource source;
 	private FileSource dest;
 	private FileSourceViewer.CopyProgressListner listener;
-	private int bufferSize=1024;
+	private int bufferSize=1024*100;
 
+	
 	public CopyThread(FileSource source, FileSource dest, FileSourceViewer.CopyProgressListner listener) {
 		this.source = source;
 		this.dest  = dest;
 		this.listener = listener;
+		if( listener !=null) {
+			if (source instanceof FileProxy) {
+				// the FileProxy is local and has an ugly name
+				listener.setDescription(dest.getName());
+			} else {
+				listener.setDescription(source.getName());
+			}
+		}
 	}
 
 	public void run() {
@@ -69,7 +187,7 @@ public class CopyThread extends BaseThread {
 						stop();
 						continue;
 					}
-					while(listener.isPaused()) {
+					while(listener.isPaused() && !listener.isCanceled()) {
 						Thread.sleep(10);
 					}
 				}
@@ -82,7 +200,7 @@ public class CopyThread extends BaseThread {
 							stop();
 							continue;
 						}
-						while(listener.isPaused()) {
+						while(listener.isPaused() && !listener.isCanceled()) {
 							Thread.sleep(10);
 						}
 					}
@@ -91,15 +209,7 @@ public class CopyThread extends BaseThread {
 					bytesCopied+=got;
 					if( listener != null ) {
 						listener.updateProgress(bytesCopied);
-					}
-					if( listener !=null ) {
-						if(listener.isCanceled()) {
-							stop();
-						}
-						while(listener.isPaused()) {
-							Thread.sleep(10);
-						}
-					}					
+					}										
 				}
 			}
 

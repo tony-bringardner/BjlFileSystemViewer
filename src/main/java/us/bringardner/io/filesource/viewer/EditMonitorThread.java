@@ -25,19 +25,23 @@
  */
 package us.bringardner.io.filesource.viewer;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import us.bringardner.core.BaseThread;
 import us.bringardner.io.filesource.FileSource;
-import us.bringardner.io.filesource.fileproxy.FileProxyFactory;
+import us.bringardner.io.filesource.FileSourceFactory;
+import us.bringardner.io.filesource.sftp.SftpFileSourceFactory;
+import us.bringardner.io.filesource.viewer.FileSourceViewer.CopyProgressListner;
 import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
-import us.bringardner.io.filesource.viewer.registry.MacRegistry;
-import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
+import us.bringardner.io.filesource.viewer.IRegistry.RegData;
+import us.bringardner.swing.MessageDialog;
 
 /**
  * If the file is remote we'll download a copy and monitor
@@ -46,132 +50,293 @@ import us.bringardner.io.filesource.viewer.registry.WindowsRegistry;
  * @author Tony Bringardner
  *
  */
-public class EditMonitorThread extends BaseThread {
+public class EditMonitorThread extends BaseThread implements CopyProgressListner {
 
-	private File local;
+	private  class OpenInstance  {
+
+		FileSource local;
+		FileSource remote;
+		FileSourceViewer browser;
+		@SuppressWarnings("unused")
+		RegData editor;
+		long modTime;
+		@SuppressWarnings("unused")
+		long lastUserResponse;
+		Process process;
+		Throwable error;
+		AtomicBoolean inProsecc = new AtomicBoolean(false);
+
+		public OpenInstance(FileSourceViewer browser, FileSource remote, FileSource local, RegData editor,Process process,long modDate) {
+			this.browser = browser;
+			this.remote = remote;
+			this.local  = local;
+			this.editor = editor;
+			this.process = process;			
+			this.modTime = modDate;
+		}
+
+	}
+
+	/**
+	 * We must use the queue method because the MacOS the process.waitFor method does not return because the open command will not terminate until the application closes , not the session  
+	 */
+	private static List<OpenInstance> queue = new ArrayList<>();
+	private static class QueueThread extends BaseThread {
+		int adminFreq = 2000;
+
+		@Override
+		public void run() {
+			started = running = true;
+			List<Integer> complete = new ArrayList<>();
+			while(running) {
+				complete.clear(); 
+				synchronized (queue) {
+
+
+					for(int idx=0,sz = queue.size(); idx < sz; idx++) {
+						OpenInstance inst = queue.get(idx);
+						if( inst.error != null ) {
+							complete.add(idx);
+							continue;
+						}
+						if( inst.inProsecc.get()) {
+							continue;
+						}
+						try {
+							if(inst.local.lastModified() != inst.modTime) {								
+								uploadIfWanted(inst);
+							}
+							if(!inst.process.isAlive()) {
+								if(inst.local.lastModified() > inst.remote.lastModified()) {								
+									uploadIfWanted(inst);
+								}	
+								complete.add(idx);
+							}
+						} catch (IOException e) {
+							complete.add(idx);
+						}
+					}
+					for(Integer idx : complete) {
+						queue.remove(idx.intValue());
+					}
+				}
+				try {
+					Thread.sleep(adminFreq);
+				} catch (InterruptedException e) {
+				}
+			}
+
+		}
+
+	}
+	private static QueueThread queueThread = new QueueThread();
+
+	public static void main(String [] args) throws IOException {
+		String src = "/data/services/home/bringardner.us/Tony/MySql/mysql-5.5.8-win32.zip";
+		src = "/data/services/home/bringardner.us/TheAnswer.txt";
+		src = "/data/services/home/bringardner.us/Test.txt";
+		String dst = "/Volumes/Data/home/Test.txt";
+		IRegistry reg = IRegistry.getRegistry();
+		List<RegData> list = reg.getRegisteredHandler(dst,CommandType.Editor);
+
+		SftpFileSourceFactory factory = new SftpFileSourceFactory();
+		Properties prop = factory.getConnectProperties();
+		prop.setProperty(SftpFileSourceFactory.PROP_HOST, "test.bringardner.us");
+		prop.setProperty(SftpFileSourceFactory.PROP_USER, "tony");
+		prop.setProperty(SftpFileSourceFactory.PROP_PASSWORD, "0000");
+		if( !factory.connect(prop)) {
+			System.out.println("Can't connect");			
+		} else {
+			FileSource fs = factory.createFileSource(src);
+			FileSource fd = FileSourceFactory.getDefaultFactory().createFileSource(dst);
+			FileSourceViewer viewer = new FileSourceViewer();
+			EditMonitorThread mt = new EditMonitorThread(viewer, fs, fd,list.get(0));
+			mt.setDaemon(true);
+			mt.start();
+			while(!mt.hasStarted()) {
+				try {
+					Thread.sleep(10);				
+				} catch (InterruptedException e) {
+				}
+			}
+			while( mt.isRunning()) {
+				try {
+					Thread.sleep(10);				
+				} catch (InterruptedException e) {
+				}
+			}
+			//System.exit(0);
+		}
+	}
+
+	public static void uploadIfWanted(OpenInstance inst) throws IOException {
+		int res = JOptionPane.showConfirmDialog(inst.browser.getFrame(), "The local copy of "+inst.remote.getName()+" has changed.\nWould you like to replace the original file?");
+		inst.lastUserResponse = System.currentTimeMillis();
+		if( res == JOptionPane.OK_OPTION) {
+			final CopySingleDialog dialog = new CopySingleDialog();
+			dialog.setTitle("Upload");
+			
+			final CopyThread copythread = new CopyThread(inst.local,inst.remote, dialog);
+			inst.inProsecc.set(true);
+			new Thread(()->{
+				download(copythread,dialog);
+				inst.inProsecc.set(false);
+				try {
+					inst.modTime = inst.local.lastModified();
+				} catch (IOException e) {
+					inst.error = e;
+				}
+			}).start();
+		} else {
+				inst.modTime = inst.local.lastModified();
+			
+		}
+	}
+
+	private FileSource local;
 	private FileSource remote;
 	private FileSourceViewer browser;
-	
-	public EditMonitorThread(Process process,FileSourceViewer browser,FileSource remote, File local) {
+	private RegData editor;
+	private AtomicBoolean canceled = new AtomicBoolean(false);
+	private AtomicBoolean paused   = new AtomicBoolean(false);
+	private AtomicBoolean copyComplete   = new AtomicBoolean(false);
+
+
+	public EditMonitorThread(FileSourceViewer browser,FileSource remote, FileSource local,RegData editor) {
 		this.local = local;
 		this.remote = remote;
 		this.browser = browser;
+		this.editor = editor;
 	}
 
-	
+
+
 	/**
-	 * This thread waits for the edit process to die then uploads any changes to the remote file
-	 * Run assumes:
-	 * 1) An edit processor has been identified and started
-	 * 2) The remote file has been downloaded to 'local'
 	 *  
 	 */
 	public void run() {
-		running = true;
-		long maxWait = 30000;
+		started = running = true;
+		//long maxWait = 30000;
 		try {
-			long start = System.currentTimeMillis();
-			while( local.length() != remote.length()) {
-				try {
-					Thread.sleep(100);				
-				} catch (InterruptedException e) {
-				}
-				
-				if( System.currentTimeMillis()-start > maxWait) {
-					int res = JOptionPane.showConfirmDialog(browser.getFrame(), "The downlaod of "+remote.getName()+" has not completed.\nWould you like to continue waiting?");
-					if( res == JOptionPane.OK_OPTION) {
-						start = System.currentTimeMillis();
-					} else {
-						return;
+			// 1) Start download in a separate thread
+			// 2) If download takes longer than xx open dialog for user interaction
+			// 3) once download is complete, start the edit process
+			// 4) monitor the process an wait for it to terminate
+			// 5) if local file has changed after the edit process competes, upload to remote site
+			CopySingleDialog dialog = new CopySingleDialog();
+			dialog.setTitle("Download ");
+			CopyThread copythread = new CopyThread(remote, local, dialog);
+			download(copythread,dialog);
+			if( !dialog.isCanceled()) {
+				long lastMod = local.lastModified();
+
+				Process process = startEditor();
+
+				if( process == null ) {
+					stop();				
+					MessageDialog.showMessageDialog( "Could not start editor "+editor.name+" for "+remote.getName()+"\ntry 'open' instead.","");
+				} else {
+
+					OpenInstance ins = new OpenInstance(browser,remote,local,editor,process,lastMod);
+					synchronized (queue) {
+						queue.add(ins);
+					}
+					if( !queueThread.isRunning()) {
+						queueThread.setName("QueueThread");
+						queueThread.start();
 					}
 				}
 			}
-		} catch (IOException e1) {
-			browser.showError("Error validating download", e1);
-			return;
-		}
-
-		long len = local.length();
-		long lastMod = local.lastModified();
-
-		Process process = startEditor();
-
-		if( process == null ) {
-			JOptionPane.showMessageDialog(browser.getFrame(), "No Editor availible for "+remote.getName()+"\ntry 'open' instead.","",JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		boolean error = false;
-
-		while( running ) {
-			try {
-				Thread.sleep(100);				
-			} catch (InterruptedException e) {
-			}
-
-			if( local.length() != len || local.lastModified() != lastMod) {
-				int res = JOptionPane.showConfirmDialog(browser.getFrame(), local.getName()+" has changed.\nWould you like to replace the original file?");
-				if( res == JOptionPane.OK_OPTION) {
-					//CopyDialog dialog = new CopyDialog(browser.getFrame());
-					List<CopyTransaction> txs = new ArrayList<CopyTransaction>();
-					try {
-						txs.add(new CopyTransaction(FileProxyFactory.getFileSource(local.getAbsolutePath()), remote, null, browser));
-						//dialog.show(txs,browser,true,showHidden,showExtention);
-					} catch (Throwable e) {
-						error = true;					
-						JOptionPane.showMessageDialog(browser.getFrame(), "Could not replace "+remote,"",JOptionPane.ERROR_MESSAGE);
-					}
-				}
-				lastMod = local.lastModified();
-				len = local.length();
-			}
-			try {
-				process.exitValue();
-				//  no error means application has terminated;
-				stop();
-			} catch(Throwable e) {
-
-			}
-		}
-
-		if(!error && local.length() != len || local.lastModified() != lastMod) {
-			int res = JOptionPane.showConfirmDialog(browser.getFrame(), local.getName()+" has changed.\nWould you like to replace the original file?");
-			if( res == JOptionPane.OK_OPTION) {
-				//CopyDialog dialog = new CopyDialog(browser.getFrame());
-				List<CopyTransaction> txs = new ArrayList<CopyTransaction>();
-				try {
-					txs.add(new CopyTransaction(FileProxyFactory.getFileSource(local.getAbsolutePath()), remote, null, browser));
-					//dialog.show(txs,browser,true,showHidden,showExtention);
-				} catch (Throwable e) {
-					JOptionPane.showInternalMessageDialog(browser.getFrame(), "Could not replace "+remote,"",JOptionPane.ERROR_MESSAGE);
-				}
-			}
-		}
-
-		try {
-			local.delete();
-		} catch (Exception e) {
-		}
+		} catch (IOException e) {			
+			MessageDialog.showErrorDialog(e.getMessage(), "Uploading file");
+		}	
 		running = false;
+	}
+
+
+	private static void download(CopyThread copythread, CopySingleDialog dialog) {
+		long start = System.currentTimeMillis();
+		copythread.start();
+		try {
+			while(!copythread.hasStarted()) {
+				Thread.sleep(10);
+			}
+			while( copythread.isRunning()) {
+				Thread.sleep(10);				
+				if( !dialog.isVisible()) {
+					long time = System.currentTimeMillis()-start;
+					if( time > 2000) {
+						SwingUtilities.invokeLater(()->{dialog.setVisible(true);});						
+					}
+				}
+			}
+		} catch (InterruptedException e) {
+			System.out.println(e);
+		}
+
+		SwingUtilities.invokeLater(()->{dialog.dispose();});
 	}
 
 
 	private Process startEditor() {
 		Process ret = null;
-		List<IRegistry.RegData> list = IRegistry.getRegistry().getRegisteredHandler(local.getAbsolutePath(),CommandType.Editor);
 		String path = local.getAbsolutePath();
-		for (IRegistry.RegData exe : list) {
-			try {
-				ret = Runtime.getRuntime().exec(exe.path+" "+path);
-				break;
-			} catch (IOException e) {
-				logDebug("Error executing "+exe, e);
-			}
-
+		try {
+			ret = Runtime.getRuntime().exec(editor.getCommand()+" "+path);
+		} catch (IOException e) {
+			logDebug("Error executing "+editor.name, e);
 		}
+
+
 
 		return ret;
 	}
 
-	
+
+	@Override
+	public void setDescription(String description) {
+		// TODO Auto-generated method stub
+
+	}
+
+
+	@Override
+	public void copyStarted(long bytesExpected) {
+		// TODO Auto-generated method stub
+
+	}
+
+
+	@Override
+	public void updateProgress(long bytesCopied) {
+		// TODO Auto-generated method stub
+
+	}
+
+
+	@Override
+	public void copyComplete() {
+		copyComplete.set(true);		
+	}
+
+
+	@Override
+	public void error(Exception e) {
+		// TODO Auto-generated method stub
+
+	}
+
+
+	@Override
+	public boolean isCanceled() {
+		return canceled.get();
+	}
+
+
+	@Override
+	public boolean isPaused() {
+		return paused.get();
+	}
+
+
 }

@@ -49,6 +49,7 @@ public interface IRegistry {
 		public String path;
 		public abstract List<Icon> getIcons() throws IOException;
 		public abstract Icon getIcon(int width, int height) throws IOException;
+		public abstract String getCommand();
 		
 		public RegData(String name, String path) {
 			this.name= name;

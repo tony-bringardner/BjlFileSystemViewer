@@ -71,7 +71,7 @@ public class CopyManagerFrame extends CopyManagerFrameBase {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					CopyManagerFrameBase frame = new CopyManagerFrameBase();
+					CopyManagerFrame frame = new CopyManagerFrame();
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();

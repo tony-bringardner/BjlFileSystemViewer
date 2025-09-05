@@ -8,7 +8,9 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,41 @@ public class MacRegistry implements IRegistry {
 		@Override
 		public Icon getIcon(int width, int height) throws IOException {
 			return app.getIcon(width, height);
+		}
+
+		String execPath;
+
+		@Override
+		public String getCommand() {
+			if( path.endsWith(".app")) {
+				if( execPath == null ) {
+					File file = new File(path+"/Contents/Info.plist");
+					try(InputStream in = new FileInputStream(file)) {
+						String tmp = new String(in.readAllBytes());
+						// <key>CFBundleExecutable</key>
+						//<string>firefox</string>
+						String key = "<key>CFBundleExecutable</key>";
+						int idx = tmp.indexOf(key);
+						if( idx > 0 ) {
+							tmp = tmp.substring( idx+key.length());
+							idx = tmp.indexOf('>');
+							tmp = tmp.substring(idx+1);
+							idx = tmp.indexOf('<');
+							tmp = tmp.substring(0,idx);
+							execPath = file.getParentFile().getAbsolutePath()+"/MacOS/"+tmp;
+						}
+					} catch (FileNotFoundException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				return "open -Wn "+path;
+				//return path;
+			}
+			return path;
 		}
 
 	}

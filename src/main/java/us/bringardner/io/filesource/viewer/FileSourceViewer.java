@@ -1392,8 +1392,8 @@ Tree.selectionForeground
 		} else {
 			File temp = new File(getTempDir(),""+System.currentTimeMillis()+f.getName());
 			temp.deleteOnExit();
-
-
+			
+			
 		}
 		return ret;
 	}
@@ -1410,47 +1410,28 @@ Tree.selectionForeground
 			IRegistry reg = IRegistry.getRegistry();
 			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath(),CommandType.Editor);
 			if( list == null || list.size()==0) {
-				MessageDialog.showMessageDialog("There are not editors registered for "+file, "");
+				MessageDialog.showMessageDialog("There are no editors registered for "+file, "");
 			} else {
 				
 				RegData editor = list.get(0); 
-				if( list.size()!= 1) {
-					
+				File local1 = new File(getTempDir(),""+System.currentTimeMillis()+file.getName());
+				FileSource local;
+				try {
+					local = FileSourceFactory.getDefaultFactory().createFileSource(local1.getAbsolutePath());
+					local1.deleteOnExit();
+					new EditMonitorThread(this, file,local, editor).start();					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 				
-				File local = getLocalFileDownloadIfNeeded(file);
-				EditMonitorThread emt = null;//new EditMonitorThread(this, file, local);
-				emt.start();
 			}
 		}
 
 	}
 
 	public void editWith(FileSource file) {
-		if (file instanceof FileProxy) {
-			File local = ((FileProxy) file).getTarget();								
-			try {
-				Desktop.getDesktop().edit(local);
-			} catch (IOException e) {
-				MessageDialog.showErrorDialog(e.getMessage(),"Can't edit "+local+"\n"+e);
-			}
-		} else {
-			IRegistry reg = IRegistry.getRegistry();
-			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath(),CommandType.Editor);
-			if( list == null || list.size()==0) {
-				MessageDialog.showMessageDialog("There are not editors registered for "+file, "");
-			} else {
-				
-				RegData editor = list.get(0); 
-				if( list.size()!= 1) {
-					
-				}
-				
-				File local = getLocalFileDownloadIfNeeded(file);
-				EditMonitorThread emt = null;//new EditMonitorThread(this, file, local);
-				emt.start();
-			}
-		}
+	
 
 	}
 	
@@ -3178,11 +3159,31 @@ Tree.selectionForeground
 	}
 
 	public void open(FileSource file) {
-		File local = getLocalFileDownloadIfNeeded(file);
-		try {
-			Desktop.getDesktop().open(local);
-		} catch (IOException e1) {
-			showError("", e1);
+		if (file instanceof FileProxy) {
+			File local = ((FileProxy) file).getTarget();								
+			try {
+				Desktop.getDesktop().open(local);
+			} catch (IOException e) {
+				MessageDialog.showErrorDialog(e.getMessage(),"Can't open "+local+"\n"+e);
+			}
+		} else {
+			IRegistry reg = IRegistry.getRegistry();
+			List<RegData> list = reg.getRegisteredHandler(file.getAbsolutePath(),CommandType.Viewer);
+			if( list == null || list.size()==0) {
+				MessageDialog.showMessageDialog("There are no applications registered for "+file, "");
+			} else {
+				
+				RegData editor = list.get(0); 
+				File local1 = new File(getTempDir(),""+System.currentTimeMillis()+file.getName());
+				FileSource local;
+				try {
+					local = FileSourceFactory.getDefaultFactory().createFileSource(local1.getAbsolutePath());					
+					new EditMonitorThread(this, file,local, editor).start();					
+				} catch (IOException e) {
+					showError("", e);
+				}
+				
+			}
 		}
 
 	}
