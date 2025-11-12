@@ -522,7 +522,8 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 				if( isCanceled()) {
 					currentTransaction.canceled = true;
 				}
-				((CopyFileTableModel)table.getModel()).fireTableDataChanged();
+				((CopyFileTableModel)table.getModel()).fireTableDataChanged();				
+				viewer.updateModelFor(currentTransaction.dest);
 			}
 
 		} else {
@@ -637,6 +638,11 @@ public class CopyProgressPanel extends JPanel implements FileSourceViewer.CopyPr
 
 
 	public void addCopy(List<FileSource> list, FileSource dst) {
+		if( viewer == null) {
+			System.out.println("Null viewer");
+			IOException e = new IOException();
+			e.printStackTrace();
+		}
 		if( SwingUtilities.isEventDispatchThread() ) {
 			// don't process in dispatch thread
 			new Thread(()->addCopy1(list, dst)).start();

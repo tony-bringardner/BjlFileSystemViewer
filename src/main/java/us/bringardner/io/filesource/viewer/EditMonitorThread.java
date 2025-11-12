@@ -282,7 +282,8 @@ public class EditMonitorThread extends BaseThread implements CopyProgressListner
 		Process ret = null;
 		String path = local.getAbsolutePath();
 		try {
-			ret = Runtime.getRuntime().exec(editor.getCommand()+" "+path);
+			ProcessBuilder b = new ProcessBuilder().command(editor.getCommand()+" "+path);
+			ret = b.start();
 		} catch (IOException e) {
 			logDebug("Error executing "+editor.name, e);
 		}

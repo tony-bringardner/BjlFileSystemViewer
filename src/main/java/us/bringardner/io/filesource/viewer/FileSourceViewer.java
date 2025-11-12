@@ -72,7 +72,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -138,6 +137,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.ExpandVetoException;
+import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
@@ -155,6 +155,9 @@ import us.bringardner.io.filesource.viewer.IRegistry.CommandType;
 import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 import us.bringardner.net.framework.client.DynamicTrustManager;
 import us.bringardner.net.framework.client.VisualCertificateValidator;
+import us.bringardner.shell.Console;
+import us.bringardner.shell.MountFactory;
+import us.bringardner.shell.VirtualFileSystem;
 import us.bringardner.swing.FontDialog;
 import us.bringardner.swing.MessageDialog;
 import us.bringardner.swing.MessageDialog.Response;
@@ -189,6 +192,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 	private static Map<Integer,FileSourceViewer> runningViewers = new HashMap<>();
 	private static Map<Integer,FileSourceFactory> sessions = new HashMap<Integer,FileSourceFactory>();
 	private static Map<FileSourceFactory,Integer> sessionMap = new HashMap<FileSourceFactory,Integer>();
+	private static VirtualFileSystem fileSystem;
 
 	private static int currentId = 0;
 	private static File tmpdir;
@@ -339,8 +343,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 							}
 						}
 					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						showError("", e);
 					}
 				}
 			}
@@ -376,53 +379,38 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 
 		public void reset() {
 			try {
+
 				List<String> names = new ArrayList<>();
 				List<FileSourceTreeNode> removeNodes = new ArrayList<>();
-
-				for(int idx=0,sz=children.size(); idx < sz; idx++) {
-					TreeNode kid = children.get(idx);
-					if (kid instanceof FileSourceTreeNode) {
-						FileSourceTreeNode node = (FileSourceTreeNode) kid;
-						if(!node.dir.exists() 
-								|| 
-								!node.dir.isDirectory() 
-								|| 
-								!dir.isChildOfMine(node.dir)
-								) {
-							removeNodes.add(node);
+				FileSource[] kids = dir.listFiles();
+				for(FileSource kid : kids) {
+					if( kid.isDirectory()) {
+						FileSourceTreeNode node = findNode(kid);
+						if( node == null ) {
+							addTreeNode(kid);
 						} else {
-							names.add(node.dir.getAbsolutePath());
+							node.reset();
 						}
 					}
 				}
-
-				FileSourceTreeNode pnode = findNode(dir);
-				if( pnode == null ) {
-					throw new IOException(""+dir+" has not tree node");
-				}
-
-				DefaultTreeModel treeModel = ((DefaultTreeModel) getTree().getModel());
-				for(FileSourceTreeNode node : removeNodes) {
-					treeModel.removeNodeFromParent(node);
-				}
-
-				FileSource kids [] = dir.listFiles();
-				Arrays.sort(kids, new Comparator<FileSource>() {
-					@Override
-					public int compare(FileSource o1, FileSource o2) {
-						return o1.getName().compareToIgnoreCase(o2.getName());
-					}
-				});
-				for(int idx=0; idx < kids.length; idx++) {
-					if( !names.contains(kids[idx].getAbsolutePath())) {
-						if( kids[idx].isDirectory()) {
-							FileSourceTreeNode newChild = new FileSourceTreeNode(kids[idx]);
-							treeModel.insertNodeInto(newChild, pnode, 0);
-
+				if( children != null ) {
+					for(int idx=0,sz=children.size(); idx < sz; idx++) {
+						TreeNode kid = children.get(idx);
+						if (kid instanceof FileSourceTreeNode) {
+							FileSourceTreeNode node = (FileSourceTreeNode) kid;
+							if(!node.dir.exists() 
+									|| 
+									!node.dir.isDirectory() 
+									|| 
+									!dir.isChildOfMine(node.dir)
+									) {
+								removeNodes.add(node);
+							} else {
+								names.add(node.dir.getAbsolutePath());
+							}
 						}
 					}
-				}
-
+				}				
 
 			} catch (IOException e) {
 
@@ -530,7 +518,7 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 						});
 					}
 				}catch (Exception e) {
-					// TODO: handle exception
+					// Ignore 
 				}
 			}
 
@@ -732,8 +720,8 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 					if (obj != null && obj instanceof List) {
 						newFiles = new ArrayList<FileSource>();
 						List<File> list = (List<File>) obj;
-						for(File f : list) {							
-							newFiles.add(factory.createFileSource(f.getCanonicalPath()));
+						for(File f : list) {	
+							newFiles.add(FileProxyFactory.fileProxyFactory.createFileSource(f.getCanonicalPath()));
 						}
 						event.acceptDrop(DnDConstants.ACTION_COPY);
 						event.dropComplete(true);
@@ -1093,10 +1081,10 @@ Panel.font = javax.swing.plaf.FontUIResource
 				r.getRegisteredHandler("file.txt",CommandType.Any);
 			} catch (Exception e) {
 			}
-			
-			
+
+
 		}).start();
-		
+
 		UIDefaults defaults = javax.swing.UIManager.getDefaults();
 
 		//FlatMacLightLaf.setup();
@@ -1173,31 +1161,30 @@ Tree.selectionForeground
 		if( java.awt.Desktop.isDesktopSupported()) {
 			try {
 				Desktop.getDesktop().setOpenFileHandler(new OpenFilesHandler() {
-					
+
 					@Override
 					public void openFiles(OpenFilesEvent e) {
 						System.out.println("In file handler");						
 					}
 				});
-				
+
 				Desktop.getDesktop().setOpenURIHandler(new OpenURIHandler() {
-					
+
 					@Override
 					public void openURI(OpenURIEvent e) {
 						System.out.println("In URI handler");
 					}
 				});
 				Desktop.getDesktop().setPrintFileHandler(new PrintFilesHandler() {
-					
+
 					@Override
 					public void printFiles(PrintFilesEvent e) {
-						// TODO Auto-generated method stub
 						System.out.println("In print handler");
 					}
 				});
-				
+
 			} catch (Exception e) {
-				// TODO: handle exception
+				// Ignore
 			}
 			try {
 				final Taskbar taskbar = Taskbar.getTaskbar();
@@ -1283,23 +1270,7 @@ Tree.selectionForeground
 			}
 		}
 		final FileSourceViewer viewer = new FileSourceViewer();
-		/*
-		SftpFileSourceFactory f = new SftpFileSourceFactory();
-		f.setUser("tony");
-		f.setPassword("0000");
-		f.setHost("bringardner.us");
-
-		long start = System.currentTimeMillis();
-		try {
-			if( !f.connect()) {
-				System.out.println("Can't connect");
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.println("Connect time = "+(System.currentTimeMillis()-start));
-		 */
+		
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -1327,7 +1298,7 @@ Tree.selectionForeground
 	}
 
 
-	public void newDirectory(ActionEvent evt) {
+	public void newFolder(ActionEvent evt) {
 
 		if(actionTarget != null && actionTarget.files.size() == 1) {
 			FileSource dir = actionTarget.files.get(0);
@@ -1392,8 +1363,8 @@ Tree.selectionForeground
 		} else {
 			File temp = new File(getTempDir(),""+System.currentTimeMillis()+f.getName());
 			temp.deleteOnExit();
-			
-			
+
+
 		}
 		return ret;
 	}
@@ -1412,7 +1383,7 @@ Tree.selectionForeground
 			if( list == null || list.size()==0) {
 				MessageDialog.showMessageDialog("There are no editors registered for "+file, "");
 			} else {
-				
+
 				RegData editor = list.get(0); 
 				File local1 = new File(getTempDir(),""+System.currentTimeMillis()+file.getName());
 				FileSource local;
@@ -1421,20 +1392,19 @@ Tree.selectionForeground
 					local1.deleteOnExit();
 					new EditMonitorThread(this, file,local, editor).start();					
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					showError("", e);
 				}
-				
+
 			}
 		}
 
 	}
 
 	public void editWith(FileSource file) {
-	
+
 
 	}
-	
+
 	public void print(FileSource file) {
 		File local = getLocalFileDownloadIfNeeded(file);
 		try {
@@ -1457,7 +1427,7 @@ Tree.selectionForeground
 
 			for (IRegistry.RegData exe : list) {
 				try {
-					proc = Runtime.getRuntime().exec(exe+" "+path);
+					proc = (new ProcessBuilder().command(exe+" "+path)).start();
 					break;
 				} catch (IOException e) {
 					System.out.println("Error executing "+exe+e);
@@ -1469,19 +1439,18 @@ Tree.selectionForeground
 				try {
 					int exit = proc.waitFor();
 					System.out.println("Exit code = "+exit);
-					BufferedReader r = proc.errorReader();
-					String line = "";
-					while((line=r.readLine()) !=null) {
-						System.out.println("err:"+line);
+					try(InputStream in = proc.getErrorStream()) {
+						String tmp = new String(in.readAllBytes());
+						System.out.println("err: "+tmp);
 					}
-
-					r = proc.inputReader();
-					while((line=r.readLine()) !=null) {
-						System.out.println("out:"+line);
+					try(InputStream in = proc.getInputStream()) {
+						String tmp = new String(in.readAllBytes());
+						System.out.println("out: "+tmp);
 					}
+					
+					
 				} catch (InterruptedException | IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					showError("", e);
 				}
 
 			}
@@ -1607,8 +1576,8 @@ Tree.selectionForeground
 					}
 				});
 				popup.add(itemOpen);
-				
-				
+
+
 				itemOpenWith = new JMenuItem("Open With...");
 				itemOpenWith.addActionListener(new ActionListener() {
 
@@ -1720,7 +1689,7 @@ Tree.selectionForeground
 
 
 			public void actionPerformed(ActionEvent evt) {
-				newDirectory(evt);
+				newFolder(evt);
 			}
 		});
 		popup.add(itemNewFolder);
@@ -1864,7 +1833,7 @@ Tree.selectionForeground
 
 		allMenus =      Arrays.asList(itemOpenTerminal,itemPaste,itemDelete,itemBackup,itemCopy,itemOpen,itemOpenWith,itemRename,itemRefresh,itemEdit,itemEditWith,itemPrint,itemNewFolder);
 		fileReadMenus = Arrays.asList(itemCopy,itemOpen,itemOpenWith,itemPrint);
-		
+
 		fileWriteMenus= Arrays.asList(itemDelete,itemRename,itemEdit,itemEditWith);
 
 		dirReadMenus  = Arrays.asList(itemOpenTerminal,itemCopy,itemOpen,itemRefresh);
@@ -1893,14 +1862,14 @@ Tree.selectionForeground
 			MessageDialog.showMessageDialog("No application availible to open "+f, "");
 			return;
 		}
-		
+
 		String exe = OptionSelectDialog.showDialog(list);
 		if( exe == null || exe.isEmpty()) {
 			return;
 		}
-		
+
 		executeExternal(exe,f);
-		
+
 	}
 
 	private void executeExternal(String exe1, FileSource f) {
@@ -1911,14 +1880,14 @@ Tree.selectionForeground
 					exe1 = "open -a "+exe1;
 				}
 			}
-			
-			
-			final Process proc = Runtime.getRuntime().exec(exe1+" "+f.getAbsolutePath());
+
+			ProcessBuilder b = new ProcessBuilder().command(exe1+" "+f.getAbsolutePath());
+			Process proc = b.start();
 			if( proc == null ) {
 				MessageDialog.showErrorDialog("Could not execute "+exe, "");
 				return;
 			}
-		
+
 			new Thread(()->{
 				try {
 					int exitCode = proc.waitFor();
@@ -1930,13 +1899,13 @@ Tree.selectionForeground
 				} catch (InterruptedException e) {
 				}
 			}).start();
-			
+
 		} catch (IOException e) {
 			MessageDialog.showErrorDialog(e.getMessage(), "");
 		}
-		
-		
-		
+
+
+
 	}
 
 	private void setupTable() {
@@ -2460,7 +2429,7 @@ Tree.selectionForeground
 				JCheckBoxMenuItem src = (JCheckBoxMenuItem) e.getSource();
 				showHidden = src.isSelected();
 
-				refreashAll();
+				refreshAll();
 			}
 		});
 
@@ -2471,7 +2440,7 @@ Tree.selectionForeground
 			public void actionPerformed(ActionEvent e) {
 				JCheckBoxMenuItem src = (JCheckBoxMenuItem) e.getSource();
 				showExtention = src.isSelected();
-				refreashAll();
+				refreshAll();
 			}
 		});
 
@@ -2606,7 +2575,10 @@ Tree.selectionForeground
 
 			FileSourceChooserDialog fc = new FileSourceChooserDialog();
 
-			fc.setSelectedFile(dir);
+			if( dir !=null) {
+				fc.setSelectedFile(dir);
+			}
+
 			fc.setFileSelectionMode(FileSourceChooserDialog.DIRECTORIES_ONLY);
 			JFrame frame = getFrame();
 			fc.setLocationRelativeTo(frame);
@@ -2627,38 +2599,73 @@ Tree.selectionForeground
 	}
 
 	private void actionOpenTerminal(FileSource cwd) {
-		System.out.println("Open terminal");
-		try {
-			String os = System.getProperty("os.name").toLowerCase();
-			ProcessBuilder processBuilder =null;
-			if(cwd !=null ) {
-				if (cwd instanceof FileProxy && cwd.isDirectory()) {
-					FileProxy fp = (FileProxy) cwd;
-					processBuilder = new ProcessBuilder().directory(fp.getTarget());
-				}
-			}
-			if( processBuilder == null ) {
-				processBuilder = new ProcessBuilder();
-			}
-			if (os.contains("win")) {
-				processBuilder.command("cmd.exe"); // Windows
-			} else if (os.contains("nix") || os.contains("nux")) {
-				processBuilder.command("gnome-terminal"); // Linux
-			} else {
-				if( cwd == null ) {
-					processBuilder.command("open", "-a", "Terminal"); // macOS
-				} else {
-					processBuilder.command("open", "-a", "Terminal", cwd.getAbsolutePath()); // macOS
-				}
-			}
-			processBuilder.start();
-		} catch (IOException e2) {
-			e2.printStackTrace();
+		Console console = new Console();
+
+		MountFactory mount = console.getMountFactory();
+		if( fileSystem==null) {
+			fileSystem = console.getMountFactory().getFileSystem();
+		} else {
+			mount.setFileSystem(fileSystem);
 		}
+
+		
+		List<FileSourceFactory> s = getRegisteredSessions();
+		/*
+ 	1) make sure all registered sessions are mounted
+ 	2) set the console current dir to cwd
+		 */
+		for(FileSourceFactory f : s) {
+			if (!(f instanceof FileProxyFactory)) {
+				String mp = mount.getMountPoint(f);
+				if( mp == null) {
+					mp = f.getTypeId()+""+f.getSessionId();
+					try {
+						mount.mount(f, mp);
+					} catch (IOException e) {
+						showError("", e);
+					}
+				}
+			}
+		}
+
+		try {
+			if (!(cwd instanceof FileProxy)) {
+				FileSourceFactory f = cwd.getFileSourceFactory();
+
+				String mp = "/";
+
+				String tmp1 = mount.getMountPoint(f);
+				if( tmp1 !=null) {
+					mp = "/"+tmp1;
+				}
+
+				FileSource dir = mount.createFileSource(mp);
+				String path = cwd.getAbsolutePath();
+				cwd = dir.getChild(path.substring(1));
+			}
+			// force creation of frame
+			//console.getKeyboadReader();
+			console.setCurrentDirectory(cwd);
+			Map<String, FileSource> map = mount.getMounts();
+			if( map.size()>0) {
+				StringBuilder tmp = new StringBuilder("There are "+map.size()+" remote connections mapped as :\n");
+				for(String name : map.keySet()) {
+					tmp.append("\t"+name+"\n");
+				}
+				console.setAdminMessage(tmp.toString());
+			}
+
+			console.start();
+		} catch (IOException e) {
+			showError("", e);
+			return;
+		}
+
+
 
 	}
 
-	protected void refreashAll()  {
+	protected void refreshAll()  {
 		new Thread(()->{
 			String id = PREF_SHOW_HIDDEN+"."+factory.getTypeId();
 			pref.putBoolean(id, showHidden);
@@ -2800,7 +2807,7 @@ Tree.selectionForeground
 		if( actionTarget == null || actionTarget.files.size() == 0 ) {
 			System.out.println("no place to paste");
 		} else if( actionTarget.files.size() > 1 ) {
-			System.out.println("too many paste locations sz="+actionTarget.files.size());
+			System.out.println("too many paste destination files sz="+actionTarget.files.size());
 		} else {
 			Transferable t = clipboard.getContents(this);
 			if( t != null ) {
@@ -2837,18 +2844,19 @@ Tree.selectionForeground
 		java.util.List<FileSource> files = null;
 		try {
 			files = (java.util.List<FileSource>)t.getTransferData(FileSourceTransferable.fileSourceFlavor);
-			if( files == null ) {
-				java.util.List<File> l = (java.util.List<File>)t.getTransferData(DataFlavor.javaFileListFlavor);
+		} catch (UnsupportedFlavorException | IOException e) {
+		}
+		if( files == null) {
+			try {
+				List<File> l = (java.util.List<File>)t.getTransferData(DataFlavor.javaFileListFlavor);
 				if( l != null && l.size() > 0 ) {
 					files = new ArrayList<FileSource>();
-					for (File f : l) {
-						files.add(FileProxyFactory.getFileSource(f.getAbsolutePath()));
+					for (File f : l) {						
+						files.add(FileProxyFactory.fileProxyFactory.createFileSource(f.getCanonicalPath()));
 					}
 				}
-			}
-		} catch (UnsupportedFlavorException e) {
-		} catch (IOException e) {
-			showError("Error getting transfer data",e);
+			} catch (UnsupportedFlavorException | IOException e1) {
+			}			
 		}
 
 
@@ -3002,6 +3010,11 @@ Tree.selectionForeground
 				tree.setSelectionPaths(path);
 			}
 		}
+		TreeModel treeModel = tree.getModel();
+		if (treeModel instanceof DefaultTreeModel) {
+			DefaultTreeModel dtm = (DefaultTreeModel) treeModel;
+			dtm.reload();
+		}
 		FileTableModel tableModel = (FileTableModel) getTable().getModel();
 		setTableModel(tableModel.getDir());
 
@@ -3115,6 +3128,7 @@ Tree.selectionForeground
 
 		try {
 			// check if it already exists
+			DefaultTreeModel model = (DefaultTreeModel) getTree().getModel();
 			FileSourceTreeNode ret = findNode(dir);
 			if( ret == null) {
 				// not find or create the parent node
@@ -3125,26 +3139,33 @@ Tree.selectionForeground
 					pnode = addTreeNode(pdir);
 				}
 
-				DefaultTreeModel model = (DefaultTreeModel) getTree().getModel();				
+
 				ret = new FileSourceTreeNode(dir);
 
-				// it's probably empty but do this anyway
-				for(FileSource kid : dir.listFiles()) {
-					if( kid.isDirectory()) {
-						ret.add(new FileSourceTreeNode(kid));
+				FileSource [] kids = dir.listFiles();
+				if( kids != null) {
+					for(FileSource kid : dir.listFiles()) {
+						if( kid.isDirectory()) {
+							ret.add(new FileSourceTreeNode(kid));
+						}
 					}
 				}
 				final FileSourceTreeNode parent = pnode;
 				final FileSourceTreeNode newChild = ret;
 				SwingUtilities.invokeAndWait(()->{
 					model.insertNodeInto(newChild, parent, parent.getChildCount());
+					model.reload(parent);
 				});
 				// if the parent is the current directory, update it
 				FileTableModel m = (FileTableModel) getTable().getModel();
 				FileSource cwd = m.getDir();
 				if( cwd.equals(pdir)) {
-					getTable().setModel(new FileTableModel(pdir, showHidden, showExtention));
+					SwingUtilities.invokeAndWait(()->{
+						getTable().setModel(new FileTableModel(pdir, showHidden, showExtention));
+					});					
 				}				
+			} else {
+				model.reload(ret.getParent());
 			}
 
 			return ret;
@@ -3156,6 +3177,29 @@ Tree.selectionForeground
 
 
 		return null;
+	}
+
+	public void updateModelFor(FileSource file)  {
+		if( SwingUtilities.isEventDispatchThread()) {
+			try {
+				if( file.isDirectory()) {
+					addTreeNode(file);
+				}
+				FileTableModel m = (FileTableModel) getTable().getModel();
+				FileSource cwd = m.getDir();
+				if( cwd.equals(cwd) || cwd.equals(file.getParentFile())) {
+					SwingUtilities.invokeLater(()->{
+						m.fireTableDataChanged();
+					});					
+				} 
+			} catch (Exception e) {
+				showError("", e);
+			}
+		} else {
+			SwingUtilities.invokeLater(()->{
+				updateModelFor(file);
+			});
+		}
 	}
 
 	public void open(FileSource file) {
@@ -3172,7 +3216,7 @@ Tree.selectionForeground
 			if( list == null || list.size()==0) {
 				MessageDialog.showMessageDialog("There are no applications registered for "+file, "");
 			} else {
-				
+
 				RegData editor = list.get(0); 
 				File local1 = new File(getTempDir(),""+System.currentTimeMillis()+file.getName());
 				FileSource local;
@@ -3182,7 +3226,7 @@ Tree.selectionForeground
 				} catch (IOException e) {
 					showError("", e);
 				}
-				
+
 			}
 		}
 
