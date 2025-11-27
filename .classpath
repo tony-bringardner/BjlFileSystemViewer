@@ -40,6 +40,5 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry combineaccessrules="false" kind="src" path="/BjlShell"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/BjlNetworkCore"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
