@@ -156,8 +156,7 @@ import us.bringardner.io.filesource.viewer.IRegistry.RegData;
 import us.bringardner.net.framework.client.DynamicTrustManager;
 import us.bringardner.net.framework.client.VisualCertificateValidator;
 import us.bringardner.shell.Console;
-import us.bringardner.shell.MountFactory;
-import us.bringardner.shell.VirtualFileSystem;
+
 import us.bringardner.swing.FontDialog;
 import us.bringardner.swing.MessageDialog;
 import us.bringardner.swing.MessageDialog.Response;
@@ -192,7 +191,6 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 	private static Map<Integer,FileSourceViewer> runningViewers = new HashMap<>();
 	private static Map<Integer,FileSourceFactory> sessions = new HashMap<Integer,FileSourceFactory>();
 	private static Map<FileSourceFactory,Integer> sessionMap = new HashMap<FileSourceFactory,Integer>();
-	private static VirtualFileSystem fileSystem;
 
 	private static int currentId = 0;
 	private static File tmpdir;
@@ -1270,7 +1268,7 @@ Tree.selectionForeground
 			}
 		}
 		final FileSourceViewer viewer = new FileSourceViewer();
-		
+
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -1447,8 +1445,8 @@ Tree.selectionForeground
 						String tmp = new String(in.readAllBytes());
 						System.out.println("out: "+tmp);
 					}
-					
-					
+
+
 				} catch (InterruptedException | IOException e) {
 					showError("", e);
 				}
@@ -2601,66 +2599,18 @@ Tree.selectionForeground
 	private void actionOpenTerminal(FileSource cwd) {
 		Console console = new Console();
 
-		MountFactory mount = console.getMountFactory();
-		if( fileSystem==null) {
-			fileSystem = console.getMountFactory().getFileSystem();
-		} else {
-			mount.setFileSystem(fileSystem);
-		}
-
-		
-		List<FileSourceFactory> s = getRegisteredSessions();
-		/*
- 	1) make sure all registered sessions are mounted
- 	2) set the console current dir to cwd
-		 */
-		for(FileSourceFactory f : s) {
-			if (!(f instanceof FileProxyFactory)) {
-				String mp = mount.getMountPoint(f);
-				if( mp == null) {
-					mp = f.getTypeId()+""+f.getSessionId();
-					try {
-						mount.mount(f, mp);
-					} catch (IOException e) {
-						showError("", e);
-					}
-				}
-			}
-		}
-
 		try {
-			if (!(cwd instanceof FileProxy)) {
-				FileSourceFactory f = cwd.getFileSourceFactory();
-
-				String mp = "/";
-
-				String tmp1 = mount.getMountPoint(f);
-				if( tmp1 !=null) {
-					mp = "/"+tmp1;
-				}
-
-				FileSource dir = mount.createFileSource(mp);
-				String path = cwd.getAbsolutePath();
-				cwd = dir.getChild(path.substring(1));
+			if( cwd == null ) {
+				cwd = factory.getCurrentDirectory();
 			}
-			// force creation of frame
-			//console.getKeyboadReader();
+			
 			console.setCurrentDirectory(cwd);
-			Map<String, FileSource> map = mount.getMounts();
-			if( map.size()>0) {
-				StringBuilder tmp = new StringBuilder("There are "+map.size()+" remote connections mapped as :\n");
-				for(String name : map.keySet()) {
-					tmp.append("\t"+name+"\n");
-				}
-				console.setAdminMessage(tmp.toString());
-			}
-
-			console.start();
 		} catch (IOException e) {
-			showError("", e);
-			return;
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 
+		console.start();
 
 
 	}
