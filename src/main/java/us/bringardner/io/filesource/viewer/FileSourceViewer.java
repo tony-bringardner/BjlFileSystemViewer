@@ -1500,6 +1500,10 @@ Tree.selectionForeground
 		itemDelete.addActionListener(new ActionListener() {
 
 
+			
+//336-360-3289
+//sabra 
+
 			public void actionPerformed(ActionEvent evt) {
 				if (popupComponent instanceof JTree) {
 					actionTarget = getSelectedFromTree();					
