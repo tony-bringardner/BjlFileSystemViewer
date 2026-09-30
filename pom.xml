@@ -20,8 +20,9 @@
 					<artifactId>maven-compiler-plugin</artifactId>
 					<version>3.3</version>
 					<configuration>
-						<source>11</source>
-						<target>11</target>
+						<!-- 21: BjlShell (the terminal) is built for Java 21; Eclipse already used JavaSE-21 -->
+						<source>21</source>
+						<target>21</target>
 					</configuration>
 				</plugin>
 
@@ -97,29 +98,29 @@
 	<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_core</artifactId>
-			<version>0.1.1</version>
+			<version>1.0.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_io</artifactId>
-			<version>0.1.1</version>
+			<version>1.0.0</version>
 		</dependency>
 		<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_net_framework</artifactId>
-			<version>0.1.1</version>
+			<version>1.0.1</version>
 		</dependency>
 
 		<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_file_system</artifactId>
-			<version>0.1.1</version>
+			<version>1.0.2-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_file_system_sftp</artifactId>
-			<version>0.1.1</version>
+			<version>1.0.0-SNAPSHOT</version>
 		</dependency>	
 		<dependency>
 			<groupId>com.jcraft</groupId>
@@ -198,7 +199,21 @@
 		<dependency>
 			<groupId>us.bringardner</groupId>
 			<artifactId>bjl_file_system_jdbc</artifactId>
-			<version>0.1.0</version>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<!-- The "Open terminal" action uses BjlShell's Console; Eclipse linked the
+		     BjlShell project directly, so a Maven build couldn't find it (BJL-27) -->
+		<dependency>
+			<groupId>us.bringardner</groupId>
+			<artifactId>bjl_file_system_console</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>5.11.4</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>
