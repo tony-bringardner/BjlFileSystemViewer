@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>bjl_file_system_viewer</artifactId>
 	<groupId>com.bringardner</groupId>
-	<version>1.0.1</version>
+	<version>1.0.2-SNAPSHOT</version>
 	<name>BJLFileSystemViewer</name>
 	<description>This project defines an Interface of a "FileSystem" that looks
 		very much like a Java File but enables multiple implementations to

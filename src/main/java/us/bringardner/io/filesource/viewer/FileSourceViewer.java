@@ -640,8 +640,19 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 		}
 	}
 
+	/**
+	 * Copies file (a folder with everything in it) into dir under its own name and adds
+	 * it to the tree. Nothing happens if the file doesn't exist or is already directly in
+	 * dir; a folder can't be copied into itself or one of its own subfolders (BJL-24:
+	 * the check used to be !dir.isChildOfMine(file), which skipped anything anywhere
+	 * below dir and let a folder be copied into itself, which never ends).
+	 */
 	public void copyToCurrentDir(FileSource dir, FileSource file) throws IOException {
-		if( !dir.isChildOfMine(file) && file.exists()) {
+		if( file.isDirectory() && file.exists() && file.isChildOfMine(dir)) {
+			showError("Can't copy "+file.getName()+" into itself ("+dir+")", null);
+			return;
+		}
+		if( file.exists() && !isDirectlyIn(dir, file)) {
 
 			FileSource newFile = dir.getChild(file.getName());
 			if( file.isDirectory()) {
@@ -662,15 +673,21 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 
 				}
 			} else {
-				OutputStream out = newFile.getOutputStream();
-				InputStream in = file.getInputStream();
-				byte[] data = in.readAllBytes();
-				out.write(data);
-				out.close();
-				in.close();															
+				// closed even if the copy fails
+				try(InputStream in = file.getInputStream(); OutputStream out = newFile.getOutputStream()) {
+					in.transferTo(out);
+				}
 			}
 
 		}
+	}
+
+	/** Is file directly in dir (same file system type and same canonical folder)? */
+	private static boolean isDirectlyIn(FileSource dir, FileSource file) throws IOException {
+		FileSource parent = file.getParentFile();
+		return parent != null
+				&& parent.getFileSourceFactory().getTypeId().equals(dir.getFileSourceFactory().getTypeId())
+				&& parent.getCanonicalPath().equals(dir.getCanonicalPath());
 	}
 
 	private class FileSourceDropTargetListener extends DropTargetAdapter {
