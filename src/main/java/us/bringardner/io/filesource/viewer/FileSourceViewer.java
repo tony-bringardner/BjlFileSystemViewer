@@ -682,11 +682,11 @@ public class FileSourceViewer extends FileSourceViewerBase implements ClipboardO
 		}
 	}
 
-	/** Is file directly in dir (same file system type and same canonical folder)? */
+	/** Is file directly in dir (same file system and same canonical folder)? */
 	private static boolean isDirectlyIn(FileSource dir, FileSource file) throws IOException {
 		FileSource parent = file.getParentFile();
 		return parent != null
-				&& parent.getFileSourceFactory().getTypeId().equals(dir.getFileSourceFactory().getTypeId())
+				&& parent.getFileSourceFactory().isSameFileSystem(dir.getFileSourceFactory())
 				&& parent.getCanonicalPath().equals(dir.getCanonicalPath());
 	}
 
