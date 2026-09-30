@@ -25,40 +25,37 @@
  */
 package us.bringardner.viewer;
 
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import junit.extensions.jfcunit.JFCTestCase;
-import junit.extensions.jfcunit.JFCTestHelper;
-import junit.extensions.jfcunit.RobotTestHelper;
-import junit.extensions.jfcunit.TestHelper;
+import java.awt.GraphicsEnvironment;
+
+import org.junit.jupiter.api.Test;
+
 import us.bringardner.io.filesource.FileSourceFactory;
 import us.bringardner.io.filesource.viewer.FileSourceViewer;
 
-public class TestViewer extends JFCTestCase {
-
-	FileSourceViewer viewer;
-	
-	protected void setUp( ) throws Exception {
-		super.setUp( );
-		// Choose the text Helper
-		setHelper( new JFCTestHelper( ) ); // Uses the AWT Event Queue.
-		setHelper( new RobotTestHelper( ) ); // Uses the OS Event Queue.
-		viewer = new FileSourceViewer();
-		 viewer.setup(FileSourceFactory.fileProxyFactory,true);
-		viewer.show();
-	}
-
-	protected void tearDown( ) throws Exception {
-		viewer = null;
-		TestHelper.cleanUp( this );	
-		super.tearDown( );
-	}
+/**
+ * Opens the viewer on the local file system and closes it again. Needs a display,
+ * so it's skipped in a headless build.
+ * <p>
+ * It was a jfcunit test (JFCTestCase), but jfcunit is neither on the classpath nor in
+ * Maven Central, so it never compiled; this does what it did (BJL-27).
+ */
+public class TestViewer {
 
 	@Test
-	public void test() {
-		//fail("Not yet implemented");
-		System.out.println("ok");
-
+	public void theViewerOpens() throws Exception {
+		assumeFalse(GraphicsEnvironment.isHeadless(), "needs a display");
+		FileSourceViewer viewer = new FileSourceViewer();
+		try {
+			viewer.setup(FileSourceFactory.fileProxyFactory, true);
+			viewer.show();
+			assertTrue(viewer.getFrame().isShowing());
+		} finally {
+			if( viewer.getFrame() != null ) {
+				viewer.getFrame().dispose();
+			}
+		}
 	}
-
 }
